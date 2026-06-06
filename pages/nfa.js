@@ -1,5 +1,6 @@
 import react from "react";
 import Head from "next/head";
+import Router from "next/router";
 
 import { observer } from "mobx-react-lite";
 import { autorun } from "mobx";
@@ -20,6 +21,13 @@ import AutomataDefinitionPanel from "components/automata-definition-panel";
 
 import { handleGraphClick, handleGraphDragEnd } from "modules/dfa/dfa-page-operations";
 import { initGraph, updateGraph } from "modules/graph-operations";
+import {
+    convertNfaToDfaData,
+    loadConvertedAutomataData,
+    storeConvertedAutomataData,
+    storeRestorableNfaData
+} from "modules/automata-conversion";
+import { PAGE_PATHS } from "modules/router-paths";
 
 import { isAppleBrowser } from "modules/utilities";
 
@@ -82,6 +90,12 @@ export default class NfaPage extends react.Component {
                 this.pageNfaInstance.graphEdges,
                 this.pageNfaInstance.reactivityCounter);
         });
+
+        const convertedData = loadConvertedAutomataData();
+
+        if (convertedData) {
+            loadAutomataData(convertedData, this.pageNfaInstance);
+        }
     }
 
     componentDidUpdate = () => {
@@ -119,6 +133,18 @@ export default class NfaPage extends react.Component {
 
         this.pageAppState.changeAppState(APP_STATES.RUN_AUTOMATA);
         this.pageNfaInstance.initRun();
+    };
+
+    convertAutomata = () => {
+        if (this.pageNfaInstance.isAutomataEmpty) {
+            this.pageAlertData.showAlertAnimated("NFA为空");
+            return;
+        }
+
+        const convertedData = convertNfaToDfaData(this.pageNfaInstance);
+        storeRestorableNfaData(this.pageNfaInstance);
+        storeConvertedAutomataData(convertedData);
+        Router.push(PAGE_PATHS.DFA_PAGE);
     };
 
     pageNfaInstance = new NfaInstance();
@@ -168,6 +194,8 @@ export default class NfaPage extends react.Component {
                 appState={appState}
                 removeSelected={this.removeSelected}
                 runAutomata={this.runAutomata}
+                convertAutomata={this.convertAutomata}
+                convertAutomataText="转DFA"
                 className={styles.bottomToolbar}
                 style={{
                     display: appState.currentState === APP_STATES.RUN_AUTOMATA ? "none" : "block"

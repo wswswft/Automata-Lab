@@ -1,5 +1,6 @@
 import react from "react";
 import Head from "next/head";
+import Router from "next/router";
 
 import { observer } from "mobx-react-lite";
 import { autorun } from "mobx";
@@ -20,6 +21,14 @@ import AutomataDefinitionPanel from "components/automata-definition-panel";
 
 import { handleGraphClick,handleGraphDragEnd } from "modules/dfa/dfa-page-operations";
 import { initGraph, updateGraph } from "modules/graph-operations";
+import {
+    convertDfaToNfaData,
+    hasRestorableNfaData,
+    loadConvertedAutomataData,
+    loadRestorableNfaData,
+    storeConvertedAutomataData
+} from "modules/automata-conversion";
+import { PAGE_PATHS } from "modules/router-paths";
 
 import { isAppleBrowser } from "modules/utilities";
 
@@ -29,6 +38,9 @@ import appStyles from "styles/app.module.scss";
 export default class DfaPage extends react.Component {
     constructor(props) {
         super(props);
+        this.state = {
+            canRestoreNfa: false
+        };
     }
 
     isAutomataEmpty = () => {
@@ -84,6 +96,16 @@ export default class DfaPage extends react.Component {
                 this.pageDfaInstance.graphEdges,
                 this.pageDfaInstance.reactivityCounter);
         });
+
+        const convertedData = loadConvertedAutomataData();
+
+        if (convertedData) {
+            loadAutomataData(convertedData, this.pageDfaInstance);
+        }
+
+        this.setState({
+            canRestoreNfa: hasRestorableNfaData()
+        });
     }
 
     componentDidUpdate = () => {
@@ -126,6 +148,32 @@ export default class DfaPage extends react.Component {
 
         this.pageAppState.changeAppState(APP_STATES.RUN_AUTOMATA);
         this.pageDfaInstance.initRun();
+    };
+
+    convertAutomata = () => {
+        if (this.pageDfaInstance.isAutomataEmpty) {
+            this.pageAlertData.showAlertAnimated("DFA为空");
+            return;
+        }
+
+        const convertedData = convertDfaToNfaData(this.pageDfaInstance);
+        storeConvertedAutomataData(convertedData);
+        Router.push(PAGE_PATHS.NFA_PAGE);
+    };
+
+    restoreAutomata = () => {
+        const restorableNfaData = loadRestorableNfaData();
+
+        if (!restorableNfaData) {
+            this.pageAlertData.showAlertAnimated("没有可回退的NFA");
+            this.setState({
+                canRestoreNfa: false
+            });
+            return;
+        }
+
+        storeConvertedAutomataData(restorableNfaData);
+        Router.push(PAGE_PATHS.NFA_PAGE);
     };
 
     pageDfaInstance = new DfaInstance();
@@ -183,6 +231,10 @@ export default class DfaPage extends react.Component {
                 appState={appState}
                 removeSelected={this.removeSelected}
                 runAutomata={this.runAutomata}
+                convertAutomata={this.convertAutomata}
+                convertAutomataText="转NFA"
+                restoreAutomata={this.state.canRestoreNfa ? this.restoreAutomata : null}
+                restoreAutomataText="回退NFA"
                 className={styles.bottomToolbar}
                 style={{
                     display: appState.currentState === APP_STATES.RUN_AUTOMATA ? "none" : "block"
