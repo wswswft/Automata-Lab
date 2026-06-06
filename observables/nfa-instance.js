@@ -4,16 +4,36 @@ import {
     toGraphNodeGroup
 } from "modules/automata-state-types";
 
+const EPSILON_TRANSITION_LABEL = "ε";
+const EPSILON_TRANSITION_CHAR = "";
+const EPSILON_TRANSITION_INPUT_ALIASES = ["@", "eps", "epsilon", EPSILON_TRANSITION_LABEL];
+
+function toDisplayChar(char) {
+    return char === EPSILON_TRANSITION_CHAR ? EPSILON_TRANSITION_LABEL : char;
+}
+
 function getLabelFromTransitionChars(chars) {
-    return chars.join(",");
+    return chars.length === 0
+        ? EPSILON_TRANSITION_LABEL
+        : chars.map(toDisplayChar).join(",");
 }
 
 function getUniqueChars(charSeq) {
     const uniqueChars = [];
+    const normalizedCharSeq = charSeq.trim();
+    const chars = normalizedCharSeq.length === 0
+        ? [EPSILON_TRANSITION_CHAR]
+        : (normalizedCharSeq.includes(",")
+            ? normalizedCharSeq.split(",").map(char => char.trim())
+            : normalizedCharSeq.split(""));
 
-    for (const char of charSeq) {
-        if (!uniqueChars.includes(char)) {
-            uniqueChars.push(char);
+    for (const char of chars) {
+        const normalizedChar = EPSILON_TRANSITION_INPUT_ALIASES.includes(char.toLowerCase())
+            ? EPSILON_TRANSITION_CHAR
+            : char;
+
+        if (normalizedChar !== "," && !uniqueChars.includes(normalizedChar)) {
+            uniqueChars.push(normalizedChar);
         }
     }
 
@@ -33,6 +53,7 @@ export class NfaInstance {
             getStateTypeById: false,
             getEdgeId: false,
             getTransitionCharSeqById: false,
+            getEpsilonClosure: false,
             isStateNameUnique: false,
             isTransitionCharSeqUnique: false
         });
@@ -103,7 +124,43 @@ export class NfaInstance {
             return "";
         }
 
-        return this.findTransitionByEdge(targetEdge)?.chars.join("") ?? "";
+        const chars = this.findTransitionByEdge(targetEdge)?.chars ?? [];
+
+        return chars.length === 0
+            ? EPSILON_TRANSITION_LABEL
+            : chars.map(toDisplayChar).join(",");
+    }
+
+    getEpsilonClosure(states) {
+        const closure = [];
+        const stack = states.filter(state => state !== undefined);
+
+        while (stack.length > 0) {
+            const state = stack.pop();
+
+            if (closure.find(x => x.id === state.id)) {
+                continue;
+            }
+
+            closure.push(state);
+
+            for (const transition of state.transitions) {
+                if (
+                    transition.chars.length !== 0
+                    && !transition.chars.includes(EPSILON_TRANSITION_CHAR)
+                ) {
+                    continue;
+                }
+
+                const nextState = this.findStateById(transition.toId);
+
+                if (nextState && !closure.find(x => x.id === nextState.id)) {
+                    stack.push(nextState);
+                }
+            }
+        }
+
+        return closure.sort((a, b) => a.id - b.id);
     }
 
     get minimumUnoccupiedStateId() {
@@ -149,7 +206,9 @@ export class NfaInstance {
     initRun() {
         this.nextRunStringCharIndex = 0;
         this.runStateSetSequence = [
-            [this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START)]
+            this.getEpsilonClosure([
+                this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START)
+            ])
         ];
         this.setCurrentGraphNodeGroups(this.currentRunStates, true);
         this.isRunningStuck = false;
@@ -179,13 +238,15 @@ export class NfaInstance {
             }
         }
 
-        if (nextStates.length === 0) {
+        const nextClosure = this.getEpsilonClosure(nextStates);
+
+        if (nextClosure.length === 0) {
             this.isRunningStuck = true;
             return;
         }
 
         this.setCurrentGraphNodeGroups(this.currentRunStates, false);
-        this.runStateSetSequence.push(nextStates);
+        this.runStateSetSequence.push(nextClosure);
         this.nextRunStringCharIndex++;
         this.setCurrentGraphNodeGroups(this.currentRunStates, true);
         this.isRunningStuck = false;
@@ -217,7 +278,9 @@ export class NfaInstance {
         this.setCurrentGraphNodeGroups(this.currentRunStates, false);
         this.nextRunStringCharIndex = 0;
         this.runStateSetSequence = [
-            [this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START)]
+            this.getEpsilonClosure([
+                this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START)
+            ])
         ];
         this.setCurrentGraphNodeGroups(this.currentRunStates, true);
         this.isRunningStuck = false;
@@ -229,6 +292,15 @@ export class NfaInstance {
         this.states = states;
         this.graphNodes = graphNodes;
         this.graphEdges = graphEdges;
+
+        for (const edge of this.graphEdges) {
+            const transition = this.findTransitionByEdge(edge);
+
+            if (transition) {
+                this.updateGraphEdgeLabel(edge, transition.chars);
+            }
+        }
+
         this.reactivityCounter = 0;
     }
 

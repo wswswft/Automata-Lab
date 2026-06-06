@@ -173,6 +173,7 @@ export default class NfaPage extends react.Component {
                     appState={appState}
                     dfaInstance={nfaInstance}
                     propertyEditorData={propertyEditorData}
+                    allowEmptyTransitionChars
                     className={styles.dfaPropertyEditor}
                     style={{
                         top: propertyEditorData.isPropertyEditorPositionAdjusted

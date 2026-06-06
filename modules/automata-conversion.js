@@ -3,6 +3,8 @@ import { AUTOMATA_STATE_TYPES, toGraphNodeGroup } from "modules/automata-state-t
 export const CONVERTED_AUTOMATA_STORAGE_KEY = "convertedAutomataData";
 export const RESTORABLE_NFA_STORAGE_KEY = "restorableNfaData";
 
+const EPSILON_TRANSITION_CHAR = "";
+
 function cloneData(data) {
     return JSON.parse(JSON.stringify(data));
 }
@@ -23,6 +25,10 @@ function getAlphabet(states) {
     for (const state of states) {
         for (const transition of state.transitions) {
             for (const char of transition.chars) {
+                if (char === EPSILON_TRANSITION_CHAR) {
+                    continue;
+                }
+
                 if (!alphabet.includes(char)) {
                     alphabet.push(char);
                 }
@@ -31,6 +37,38 @@ function getAlphabet(states) {
     }
 
     return alphabet.sort();
+}
+
+function getEpsilonClosure(states, automataInstance) {
+    const closure = [];
+    const stack = states.filter(state => state !== undefined);
+
+    while (stack.length > 0) {
+        const state = stack.pop();
+
+        if (closure.find(x => x.id === state.id)) {
+            continue;
+        }
+
+        closure.push(state);
+
+        for (const transition of state.transitions) {
+            if (
+                transition.chars.length !== 0
+                && !transition.chars.includes(EPSILON_TRANSITION_CHAR)
+            ) {
+                continue;
+            }
+
+            const nextState = automataInstance.findStateById(transition.toId);
+
+            if (nextState && !closure.find(x => x.id === nextState.id)) {
+                stack.push(nextState);
+            }
+        }
+    }
+
+    return closure.sort((a, b) => a.id - b.id);
 }
 
 function hasWholeOuterBraces(name) {
@@ -134,7 +172,7 @@ function collectNextSubset(subset, symbol, nfaInstance) {
         }
     }
 
-    return nextStates.sort((a, b) => a.id - b.id);
+    return getEpsilonClosure(nextStates, nfaInstance);
 }
 
 function createGraphEdge(edgeId, fromId, toId, chars, graphEdges) {
@@ -234,7 +272,7 @@ export function convertDfaToNfaData(dfaInstance) {
 export function convertNfaToDfaData(nfaInstance) {
     const alphabet = getAlphabet(nfaInstance.states);
     const startState = nfaInstance.states.find(state => state.type === AUTOMATA_STATE_TYPES.START);
-    const startSubset = startState ? [startState] : [];
+    const startSubset = getEpsilonClosure(startState ? [startState] : [], nfaInstance);
     const subsets = [];
     const subsetMap = new Map();
     const queue = [];

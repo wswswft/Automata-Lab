@@ -4,6 +4,9 @@ import { AUTOMATA_STATE_TYPES } from "modules/automata-state-types";
 
 import styles from "styles/automata-definition-panel.module.scss";
 
+const EPSILON_TRANSITION_LABEL = "ε";
+const EPSILON_TRANSITION_CHAR = "";
+
 function formatSet(values, emptyText = "∅") {
     if (values.length === 0) {
         return emptyText;
@@ -22,6 +25,10 @@ function getAlphabet(states) {
     for (const state of states) {
         for (const transition of state.transitions) {
             for (const char of transition.chars) {
+                if (char === EPSILON_TRANSITION_CHAR) {
+                    continue;
+                }
+
                 if (!symbols.includes(char)) {
                     symbols.push(char);
                 }
@@ -37,14 +44,20 @@ function getTransitionRows(states, automataInstance, automataType) {
 
     for (const state of states) {
         for (const transition of state.transitions) {
-            for (const char of transition.chars) {
-                const key = `${state.id}:${char}`;
+            const symbols = transition.chars.length === 0
+                ? [EPSILON_TRANSITION_LABEL]
+                : transition.chars.map(symbol => symbol === EPSILON_TRANSITION_CHAR
+                    ? EPSILON_TRANSITION_LABEL
+                    : symbol);
+
+            for (const symbol of symbols) {
+                const key = `${state.id}:${symbol}`;
                 const nextStateName = automataInstance.getStateNameById(transition.toId);
 
                 if (!transitionMap.has(key)) {
                     transitionMap.set(key, {
                         fromName: state.name,
-                        symbol: char,
+                        symbol,
                         toNames: []
                     });
                 }
@@ -80,6 +93,7 @@ const AutomataDefinitionPanel = ({ automataInstance, automataType, className, st
         .filter(state => state.type === AUTOMATA_STATE_TYPES.FINAL)
         .map(state => state.name);
     const transitionRows = getTransitionRows(states, automataInstance, automataType);
+    const transitionDomain = automataType === "NFA" ? "Q × (Σ ∪ {ε})" : "Q × Σ";
     const transitionTarget = automataType === "NFA" ? "2^Q" : "Q";
 
     const removeDragListeners = () => {
@@ -177,7 +191,7 @@ const AutomataDefinitionPanel = ({ automataInstance, automataType, className, st
                 </div>
                 <div>
                     <dt>δ</dt>
-                    <dd>Q × Σ → {transitionTarget}</dd>
+                    <dd>{transitionDomain} → {transitionTarget}</dd>
                 </div>
                 <div>
                     <dt>q₀</dt>
