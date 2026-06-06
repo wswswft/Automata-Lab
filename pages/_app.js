@@ -97,6 +97,18 @@ class MyApp extends react.Component {
     });
   };
 
+  getAutomataPage = () => {
+    const page = this.automataPageRef.current;
+
+    return page && typeof page.isAutomataEmpty === "function" ? page : null;
+  };
+
+  isCurrentAutomataEmpty = () => {
+    const page = this.getAutomataPage();
+
+    return page ? page.isAutomataEmpty() : true;
+  };
+
   closeDialog = yes => {
     if (!yes) {
       this.setState({
@@ -129,7 +141,7 @@ class MyApp extends react.Component {
         break;
 
       case DIALOG_AFFAIRS.CONFIRM_CLEAR_ALL:
-        this.automataPageRef.current.clearAll();
+        this.getAutomataPage()?.clearAll();
         break;
 
       case DIALOG_AFFAIRS.CONFIRM_LOAD_EXAMPLE:
@@ -150,7 +162,7 @@ class MyApp extends react.Component {
 
   goToNewAutomataPage = (path, callback = () => {}) => {
     if (Router.pathname === path) {
-      this.automataPageRef.current.clearAll();
+      this.getAutomataPage()?.clearAll();
       callback();
     } else {
       Router.push(path).then(() => {
@@ -162,9 +174,14 @@ class MyApp extends react.Component {
   };
 
   importAutomataJsonString = jsonString => {
+    const currentAutomataPage = this.getAutomataPage();
+    const alertData = currentAutomataPage?.pageAlertData ?? {
+      showAlertAnimated: message => window.alert(message),
+    };
+
     const automataData = parseAutomataJson(
       jsonString,
-      this.automataPageRef.current.pageAlertData,
+      alertData,
     );
 
     if (automataData) {
@@ -184,9 +201,7 @@ class MyApp extends react.Component {
           break;
 
         default:
-          this.automataPageRef.current.pageAlertData.showAlertAnimated(
-            "自动机类型不受支持",
-          );
+          alertData.showAlertAnimated("自动机类型不受支持");
           break;
       }
     }
@@ -208,7 +223,7 @@ class MyApp extends react.Component {
 
   ///////////////////////////////// Aside onclick handlers /////////////////////////////////
   onNewDfaClick = () => {
-    if (this.automataPageRef.current.isAutomataEmpty()) {
+    if (this.isCurrentAutomataEmpty()) {
       this.goToNewAutomataPage(PAGE_PATHS.DFA_PAGE);
       return;
     }
@@ -222,7 +237,7 @@ class MyApp extends react.Component {
   };
 
   onNewTmClick = () => {
-    if (this.automataPageRef.current.isAutomataEmpty()) {
+    if (this.isCurrentAutomataEmpty()) {
       this.goToNewAutomataPage(PAGE_PATHS.TM_PAGE);
       return;
     }
@@ -249,7 +264,7 @@ class MyApp extends react.Component {
   };
 
   onImportAutomataClick = () => {
-    if (this.automataPageRef.current.isAutomataEmpty()) {
+    if (this.isCurrentAutomataEmpty()) {
       document.getElementById("in-import-automata").click();
       return;
     }
@@ -263,8 +278,14 @@ class MyApp extends react.Component {
   };
 
   onExportAutomataClick = () => {
+    const currentAutomataPage = this.getAutomataPage();
+
+    if (typeof currentAutomataPage?.exportAutomataJsonString !== "function") {
+      return;
+    }
+
     const automataJsonString =
-      this.automataPageRef.current.exportAutomataJsonString();
+      currentAutomataPage.exportAutomataJsonString();
 
     if (!automataJsonString) {
       return;
@@ -293,7 +314,7 @@ class MyApp extends react.Component {
   };
 
   onGoToMirrorClick = () => {
-    if (this.automataPageRef.current.isAutomataEmpty()) {
+    if (this.isCurrentAutomataEmpty()) {
       window.location.assign(MIRROR_URL);
       return;
     }
@@ -344,7 +365,7 @@ class MyApp extends react.Component {
   onExampleItemClick = url => {
     this.data.exampleJsonUrl = url;
 
-    if (this.automataPageRef.current.isAutomataEmpty()) {
+    if (this.isCurrentAutomataEmpty()) {
       this.loadExample();
       return;
     }
