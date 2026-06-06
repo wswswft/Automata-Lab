@@ -2,11 +2,12 @@
 
 简体中文 | [English](README.md)
 
-Automata Playground 是一个基于 [Next.js](https://nextjs.org/) 的自动机可视化实验平台，用于构建、编辑和运行有限自动机与图灵机。
+Automata Playground 是一个基于 [Next.js](https://nextjs.org/) 的自动机可视化实验平台，用于构建、编辑和运行有限自动机、非确定有限自动机与图灵机。
 
 ## 功能
 
 - 可视化编辑 DFA 状态与转移
+- 可视化编辑 NFA 状态与非确定转移
 - 可视化编辑图灵机状态与转移
 - 运行自动机并观察执行过程
 - 导入与导出自动机 JSON 数据
@@ -62,7 +63,7 @@ npm run lint
 
 ## 主要目录
 
-- `pages/`：Next.js 页面，包括 DFA、图灵机和动态路由页面
+- `pages/`：Next.js 页面，包括 DFA、NFA、图灵机和动态路由页面
 - `components/`：界面组件
 - `modules/`：自动机数据处理、图操作和工具函数
 - `observables/`：MobX 状态数据

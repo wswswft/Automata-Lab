@@ -2,6 +2,7 @@ import { AUTOMATA_TYPES } from "modules/automata-types";
 
 const AUTOMATA_TYPE_TOKENS = {
   DFA: "AP_DFA",
+  NFA: "AP_NFA",
   TM: "AP_TM",
 };
 
@@ -16,6 +17,18 @@ export function generateDfaJsonString(dfaInstance) {
     states: dfaInstance.states,
     graphNodes: dfaInstance.graphNodes,
     graphEdges: dfaInstance.graphEdges,
+  });
+}
+
+export function generateNfaJsonString(nfaInstance) {
+  return JSON.stringify({
+    automataType: AUTOMATA_TYPE_TOKENS.NFA,
+    version: currentVersion,
+    nextStateId: nfaInstance.nextStateId,
+    nextEdgeId: nfaInstance.nextEdgeId,
+    states: nfaInstance.states,
+    graphNodes: nfaInstance.graphNodes,
+    graphEdges: nfaInstance.graphEdges,
   });
 }
 
@@ -65,6 +78,8 @@ export function getAutomataType(automataData) {
   switch (automataData.automataType) {
     case AUTOMATA_TYPE_TOKENS.DFA:
       return AUTOMATA_TYPES.DFA;
+    case AUTOMATA_TYPE_TOKENS.NFA:
+      return AUTOMATA_TYPES.NFA;
     case AUTOMATA_TYPE_TOKENS.TM:
       return AUTOMATA_TYPES.TM;
     default:

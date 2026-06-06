@@ -2,11 +2,12 @@
 
 [简体中文](README.zh-CN.md) | English
 
-Automata Playground is a [Next.js](https://nextjs.org/) based visual playground for building, editing, and running finite automata and Turing machines.
+Automata Playground is a [Next.js](https://nextjs.org/) based visual playground for building, editing, and running finite automata, nondeterministic finite automata, and Turing machines.
 
 ## Features
 
 - Visually edit DFA states and transitions
+- Visually edit NFA states and nondeterministic transitions
 - Visually edit Turing machine states and transitions
 - Run automata and inspect the execution process
 - Import and export automata as JSON data
@@ -62,7 +63,7 @@ Runs the Next.js ESLint checks.
 
 ## Main Directories
 
-- `pages/`: Next.js pages, including DFA, Turing machine, and dynamic route pages
+- `pages/`: Next.js pages, including DFA, NFA, Turing machine, and dynamic route pages
 - `components/`: UI components
 - `modules/`: automata data handling, graph operations, and utility functions
 - `observables/`: MobX state data

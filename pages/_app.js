@@ -27,11 +27,12 @@ import "@fortawesome/fontawesome-free/css/solid.min.css";
 const DIALOG_AFFAIRS = {
   NOTHING: -1,
   CONFIRM_NEW_DFA: 0,
-  CONFIRM_NEW_TM: 1,
-  CONFIRM_LOAD_EXAMPLE: 2,
-  CONFIRM_LOAD_FILE: 3,
-  CONFIRM_CLEAR_ALL: 4,
-  CONFIRM_GOTO_MIRROR: 5,
+  CONFIRM_NEW_NFA: 1,
+  CONFIRM_NEW_TM: 2,
+  CONFIRM_LOAD_EXAMPLE: 3,
+  CONFIRM_LOAD_FILE: 4,
+  CONFIRM_CLEAR_ALL: 5,
+  CONFIRM_GOTO_MIRROR: 6,
 };
 
 const MIRROR_URL = "https://ecui.gitee.io/automata-playground";
@@ -132,6 +133,10 @@ class MyApp extends react.Component {
         this.goToNewAutomataPage(PAGE_PATHS.DFA_PAGE);
         break;
 
+      case DIALOG_AFFAIRS.CONFIRM_NEW_NFA:
+        this.goToNewAutomataPage(PAGE_PATHS.NFA_PAGE);
+        break;
+
       case DIALOG_AFFAIRS.CONFIRM_NEW_TM:
         this.goToNewAutomataPage(PAGE_PATHS.TM_PAGE);
         break;
@@ -194,6 +199,12 @@ class MyApp extends react.Component {
           });
           break;
 
+        case AUTOMATA_TYPES.NFA:
+          this.goToNewAutomataPage(PAGE_PATHS.NFA_PAGE, () => {
+            this.automataPageRef.current.loadAutomataJsonString(automataData);
+          });
+          break;
+
         case AUTOMATA_TYPES.TM:
           this.goToNewAutomataPage(PAGE_PATHS.TM_PAGE, () => {
             this.automataPageRef.current.loadAutomataJsonString(automataData);
@@ -250,6 +261,20 @@ class MyApp extends react.Component {
     });
   };
 
+  onNewNfaClick = () => {
+    if (this.isCurrentAutomataEmpty()) {
+      this.goToNewAutomataPage(PAGE_PATHS.NFA_PAGE);
+      return;
+    }
+
+    this.data.dialogAffair = DIALOG_AFFAIRS.CONFIRM_NEW_NFA;
+    this.setState({
+      yesNoDialogTitle: "新建NFA",
+      yesNoDialogMessage: "当前自动机将被清空。继续吗？",
+      isYesNoDialogShow: true,
+    });
+  };
+
   onOnlineExamplesClick = () => {
     fetch(BASE_PATH + "/example-list.json")
       .then(res => {
@@ -297,7 +322,7 @@ class MyApp extends react.Component {
 
     const anchor = document.createElement("a");
     anchor.href = stringUrl;
-    anchor.download = `${Router.pathname === "/dfa" ? "dfa" : "tm"}.json`;
+    anchor.download = `${this.state.currentAutomataTypeName.toLowerCase()}.json`;
 
     anchor.click();
 
@@ -447,6 +472,11 @@ class MyApp extends react.Component {
             <li onClick={this.onNewDfaClick}>
               <i className="fa-solid fa-plus"></i>
               新建DFA
+            </li>
+
+            <li onClick={this.onNewNfaClick}>
+              <i className="fa-solid fa-plus"></i>
+              新建NFA
             </li>
 
             <li onClick={this.onNewTmClick}>

@@ -1,5 +1,6 @@
 export const PAGE_PATHS = {
     DFA_PAGE: "/dfa",
+    NFA_PAGE: "/nfa",
     TM_PAGE: "/tm"
 };
 
