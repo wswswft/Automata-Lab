@@ -16,6 +16,7 @@ import {
 import DfaPropertyEditor from "components/dfa/dfa-property-editor";
 import AutomataToolbar from "components/automata-toolbar";
 import NfaRunPanel from "components/nfa/nfa-run-panel";
+import AutomataDefinitionPanel from "components/automata-definition-panel";
 
 import { handleGraphClick, handleGraphDragEnd } from "modules/dfa/dfa-page-operations";
 import { initGraph, updateGraph } from "modules/graph-operations";
@@ -158,6 +159,10 @@ export default class NfaPage extends react.Component {
                             : 0
                     }} />
             }
+
+            <AutomataDefinitionPanel
+                automataInstance={nfaInstance}
+                automataType="NFA" />
 
             <AutomataToolbar
                 appState={appState}

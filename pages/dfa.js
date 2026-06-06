@@ -16,6 +16,7 @@ import {
 import DfaPropertyEditor from "components/dfa/dfa-property-editor";
 import AutomataToolbar from "components/automata-toolbar";
 import DfaRunPanel from "components/dfa/dfa-run-panel";
+import AutomataDefinitionPanel from "components/automata-definition-panel";
 
 import { handleGraphClick,handleGraphDragEnd } from "modules/dfa/dfa-page-operations";
 import { initGraph, updateGraph } from "modules/graph-operations";
@@ -173,6 +174,10 @@ export default class DfaPage extends react.Component {
                 won't be triggered, and so PropertyEditor will always stay at left:0, top:0.
                 Current solution is to ignore position adjustment and use unadjusted position
                 directly on apple browsers.*/}
+
+            <AutomataDefinitionPanel
+                automataInstance={dfaInstance}
+                automataType="DFA" />
             
             <AutomataToolbar
                 appState={appState}
