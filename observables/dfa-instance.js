@@ -8,91 +8,101 @@ function getLabelFromTransitionChars(chars) {
     return chars.join(",");
 }
 
-export class DfaInstance{
+function getUniqueChars(charSeq) {
+    const uniqueChars = [];
+
+    for (const char of charSeq) {
+        if (!uniqueChars.includes(char)) {
+            uniqueChars.push(char);
+        }
+    }
+
+    return uniqueChars;
+}
+
+export class DfaInstance {
     constructor() {
         makeAutoObservable(this, {
+            findStateById: false,
+            findGraphNodeById: false,
+            findGraphEdgeById: false,
+            findTransitionByEdge: false,
+            updateGraphEdgeLabel: false,
+            increaseReactivityCounter: false,
             getStateNameById: false,
             getStateTypeById: false,
             getEdgeId: false,
-            getTransitionCharSeqById:false,
+            getTransitionCharSeqById: false,
             isStateNameUnique: false,
-            isTransitionCharSeqUnique:false
+            isTransitionCharSeqUnique: false
         });
     }
 
     ///////////////////////////////// Observable /////////////////////////////////
-    // used to help subscribe array changes. it should always be changed after all others.
-    // in this app, the practice is to use it as an extra parameter in autorun.
+    // Used to help subscribe array changes. It should be changed after other data updates.
     reactivityCounter = 0;
-    // one state in states and graphNodes share the same id
     nextStateId = 0;
-    // for adding in graphEdges. It will be converted to String when adding edge.
     nextEdgeId = 0;
-    // used for automata running
-    // element structure:
-    /*
-        State:{
-            id:Number, 
-            name:String, 
-            type:Number, 
-            transitions:Array<{
-                toId:Number, 
-                chars:Array<String>
-            }>
-        }
-    */
+
+    // State: { id, name, type, transitions: Array<{ toId, chars }> }
     states = [];
 
-    // used for vis.js graph
-    // element structure:
-    /*
-        GraphNode:{
-            id:Number (guaranteed equal to State.id for same state),
-            label:String (guaranteed equal to State.name for same state), 
-            group:String,
-            x:Number,
-            y:Number
-        }
-    */
+    // GraphNode: { id, label, group, x, y }
     graphNodes = [];
 
-    // element structure:
-    /*
-        GraphEdge:{
-            id:String
-            from:Number (from Id), 
-            to:Number (to Id),
-            label:String (UI-friendly form)
-        }
-    */
+    // GraphEdge: { id, from, to, label, smooth? }
     graphEdges = [];
 
     ///// Run automata data
     runString = "010";
     nextRunStringCharIndex = 0;
-    runStateSequence = []; // Array<State>
+    runStateSequence = [];
     isRunningStuck = false;
-    ///////////////////////////////// ComputedFn /////////////////////////////////
-    // requirements: name(String)
-    isStateNameUnique(name) {
-        return this.states.find(x => x.name === name) === undefined;
+
+    ///////////////////////////////// Lookup helpers /////////////////////////////////
+    findStateById(id) {
+        return this.states.find(state => state.id === id);
     }
 
-    // requirements: id(String) must be valid; charSeq(String) length>0
+    findGraphNodeById(id) {
+        return this.graphNodes.find(node => node.id === id);
+    }
+
+    findGraphEdgeById(id) {
+        return this.graphEdges.find(edge => edge.id === id);
+    }
+
+    findTransitionByEdge(edge) {
+        return this.findStateById(edge.from)
+            ?.transitions.find(transition => transition.toId === edge.to);
+    }
+
+    updateGraphEdgeLabel(edge, chars) {
+        edge.label = getLabelFromTransitionChars(chars);
+    }
+
+    increaseReactivityCounter() {
+        this.reactivityCounter++;
+    }
+
+    ///////////////////////////////// ComputedFn /////////////////////////////////
+    isStateNameUnique(name) {
+        return this.states.find(state => state.name === name) === undefined;
+    }
+
     // return [isUnique, firstDuplicatedChar]
     isTransitionCharSeqUnique(id, charSeq) {
-        const targetEdge = this.graphEdges.find(x => x.id === id);
-        const fromState = this.states.find(x => x.id === targetEdge.from);
+        const targetEdge = this.findGraphEdgeById(id);
+        const fromState = this.findStateById(targetEdge.from);
 
-        for (const i of fromState.transitions) {
-            // do not compare to self
-            if (i.toId === targetEdge.to) {
+        for (const transition of fromState.transitions) {
+            if (transition.toId === targetEdge.to) {
                 continue;
             }
 
-            for (const j of charSeq) {
-                if (i.chars.includes(j)) {
-                    return [false, j];
+            for (const char of charSeq) {
+                if (transition.chars.includes(char)) {
+                    return [false, char];
                 }
             }
         }
@@ -100,76 +110,64 @@ export class DfaInstance{
         return [true, ""];
     }
 
-    // requirements: id(Number) must be valid
     getStateNameById(id) {
-        const targetState = this.states.find(x => x.id === id);
-        return targetState?targetState.name:"";
+        return this.findStateById(id)?.name ?? "";
     }
 
-    // requirements: id(Number) must be valid
     getStateTypeById(id) {
-        const targetState = this.states.find(x => x.id === id);
-        return targetState ? targetState.type : AUTOMATA_STATE_TYPES.NORMAL;
+        return this.findStateById(id)?.type ?? AUTOMATA_STATE_TYPES.NORMAL;
     }
 
-    // requirements: fromId(Number), toId(Number) must be valid
     getEdgeId(fromId, toId) {
-        const targetEdge = this.graphEdges.find(x => x.from === fromId && x.to === toId);
-        return targetEdge ? targetEdge.id : "";
+        return this.graphEdges.find(edge => edge.from === fromId && edge.to === toId)?.id ?? "";
     }
 
-    // requirements: id(String) must be valid
     getTransitionCharSeqById(id) {
-        const targetGraphEdge = this.graphEdges.find(x => x.id === id);
-        if (!targetGraphEdge) {
+        const targetEdge = this.findGraphEdgeById(id);
+
+        if (!targetEdge) {
             return "";
         }
-        const targetTransition =
-            this.states.find(x => x.id === targetGraphEdge.from)
-                .transitions.find(x => x.toId === targetGraphEdge.to);
-        return targetTransition ? targetTransition.chars.join("") : "";
+
+        return this.findTransitionByEdge(targetEdge)?.chars.join("") ?? "";
     }
 
     ///////////////////////////////// Computed /////////////////////////////////
     get minimumUnoccupiedStateId() {
-        // nextStateId must be unoccupied
-        for (let i = 0; i <= this.nextStateId; i++){
-            if (this.states.find(x => x.id === i) === undefined) {
+        for (let i = 0; i <= this.nextStateId; i++) {
+            if (this.findStateById(i) === undefined) {
                 return i;
             }
         }
     }
-    // check if there is a start state
+
     get hasStartState() {
-        return this.states.find(x => x.type === AUTOMATA_STATE_TYPES.START) !== undefined;
+        return this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START) !== undefined;
     }
 
     get currentRunState() {
-        return this.runStateSequence[this.runStateSequence.length - 1]??{name:""};
+        return this.runStateSequence[this.runStateSequence.length - 1] ?? { name: "" };
     }
-    
+
     get isAutomataEmpty() {
         return this.states.length === 0;
     }
 
-    ///////////////////////////////// Action /////////////////////////////////
-    ///// Run automata functions
-    setGraphNodeGroup(state,isCurrent) {
-        const targetGraphNode = this.graphNodes.find(x => x.id === state.id);
+    ///////////////////////////////// Run automata actions /////////////////////////////////
+    setGraphNodeGroup(state, isCurrent) {
+        const targetGraphNode = this.findGraphNodeById(state.id);
         targetGraphNode.group = toGraphNodeGroup(state.type, isCurrent);
     }
-    // requirements: runString(String) cannot be empty
+
     setRunString(runString) {
         this.runString = runString;
     }
-    
-    // should be called when entering RUN_AUTOMATA state
-    // must be called before runSingleStep or runToEnd
+
     initRun() {
-        // it keeps runString unchanged
-        // set state sequence to include only start state
         this.nextRunStringCharIndex = 0;
-        this.runStateSequence = [this.states.find(x => x.type === AUTOMATA_STATE_TYPES.START)];
+        this.runStateSequence = [
+            this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START)
+        ];
         this.setGraphNodeGroup(this.currentRunState, true);
         this.isRunningStuck = false;
     }
@@ -179,36 +177,33 @@ export class DfaInstance{
     }
 
     runSingleStep() {
-        if (this.nextRunStringCharIndex > this.runString.length - 1) {
+        if (this.nextRunStringCharIndex > this.runString.length - 1 || this.isRunningStuck) {
             return;
         }
 
-        if (this.isRunningStuck) {
+        const currentChar = this.runString[this.nextRunStringCharIndex];
+        const nextTransition = this.currentRunState.transitions.find(
+            transition => transition.chars.includes(currentChar)
+        );
+
+        if (!nextTransition) {
+            this.isRunningStuck = true;
             return;
         }
 
-        let isRunningStuck = true;
-
-        for (const i of this.currentRunState.transitions) {
-            if (i.chars.includes(this.runString[this.nextRunStringCharIndex])) {
-                this.setGraphNodeGroup(this.currentRunState, false);
-                this.runStateSequence.push(this.states.find(x => x.id === i.toId));
-                this.setGraphNodeGroup(this.currentRunState, true);
-                this.nextRunStringCharIndex++;
-
-                isRunningStuck = false;
-                break;
-            }
-        }
-
-        this.isRunningStuck = isRunningStuck;
+        this.setGraphNodeGroup(this.currentRunState, false);
+        this.runStateSequence.push(this.findStateById(nextTransition.toId));
+        this.setGraphNodeGroup(this.currentRunState, true);
+        this.nextRunStringCharIndex++;
+        this.isRunningStuck = false;
     }
 
     runToEnd() {
-        for (let i = this.nextRunStringCharIndex; i < this.runString.length; i++){
+        for (let i = this.nextRunStringCharIndex; i < this.runString.length; i++) {
             if (this.isRunningStuck) {
                 break;
             }
+
             this.runSingleStep();
         }
     }
@@ -228,45 +223,45 @@ export class DfaInstance{
     runReset() {
         this.setGraphNodeGroup(this.currentRunState, false);
         this.nextRunStringCharIndex = 0;
-        this.runStateSequence = [this.states.find(x => x.type === AUTOMATA_STATE_TYPES.START)];
+        this.runStateSequence = [
+            this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START)
+        ];
         this.setGraphNodeGroup(this.currentRunState, true);
         this.isRunningStuck = false;
     }
 
-    ///// Load DFA from file read
+    ///////////////////////////////// Load and reset actions /////////////////////////////////
     loadData(nextStateId, nextEdgeId, states, graphNodes, graphEdges) {
         this.nextStateId = nextStateId;
         this.nextEdgeId = nextEdgeId;
         this.states = states;
         this.graphNodes = graphNodes;
         this.graphEdges = graphEdges;
-
         this.reactivityCounter = 0;
     }
 
-    ///// State&transition management functions
     clearAll() {
         this.nextStateId = 0;
         this.nextEdgeId = 0;
         this.states = [];
         this.graphNodes = [];
         this.graphEdges = [];
-        
         this.reactivityCounter = 0;
     }
-    // requirements: name(String) cannot be empty and must be unique; 
-    // stateType(Number) has to be one of STATE_TYPES in automata-state-types.js;
-    // x(Number); y(Number) are canvas coords
-    addState(name,stateType,x,y) {
+
+    ///////////////////////////////// State and transition actions /////////////////////////////////
+    addState(name, stateType, x, y) {
+        const stateId = this.nextStateId;
+
         this.states.push({
-            id: this.nextStateId,
+            id: stateId,
             name,
             type: stateType,
-            transitions:[]
+            transitions: []
         });
 
         this.graphNodes.push({
-            id: this.nextStateId,
+            id: stateId,
             label: name,
             group: toGraphNodeGroup(stateType),
             x,
@@ -274,85 +269,66 @@ export class DfaInstance{
         });
 
         this.nextStateId++;
-
-        this.reactivityCounter++;
+        this.increaseReactivityCounter();
     }
 
-    // requirements:
-    // fromId(Number) and toId(Number) have to be valid;
-    // charSeq(String) length>0;
-    // each char in charSeq must be unique in all transitions starting from fromId.
-    // inside charSeq, chars does not need to be unique; 
-    // only new transitions will be added.
-    // if a transition from From to To already exists, charSeq can also contain duplications.
     addTransition(fromId, toId, charSeq) {
-        const charsOrig = charSeq.split("");
-        const chars = [];
+        const chars = getUniqueChars(charSeq);
+        const fromTransitions = this.findStateById(fromId).transitions;
+        const fromTransition = fromTransitions.find(transition => transition.toId === toId);
 
-        // remove duplications in charOrig
-        for (const i of charsOrig) {
-            if (!chars.includes(i)) {
-                chars.push(i);
-            }
-        }
-
-        const fromTransitions = this.states.find(x => x.id === fromId).transitions;
-        const fromTransition = fromTransitions.find(x => x.toId === toId);
-        // if a transition to To state already exists, then simply merge the chars
         if (fromTransition) {
-            for (const i of chars) {
-                if (!fromTransition.chars.includes(i)) {
-                    fromTransition.chars.push(i);
+            for (const char of chars) {
+                if (!fromTransition.chars.includes(char)) {
+                    fromTransition.chars.push(char);
                 }
             }
 
-            this.graphEdges.find(x => x.from === fromId && x.to === toId).label =
-                getLabelFromTransitionChars(fromTransition.chars);
+            this.updateGraphEdgeLabel(
+                this.graphEdges.find(edge => edge.from === fromId && edge.to === toId),
+                fromTransition.chars
+            );
         }
-        // otherwise add a new transition
         else {
             fromTransitions.push({ toId, chars });
-
-            const newEdge = {
-                id: this.nextEdgeId.toString(),
-                from: fromId,
-                to: toId,
-                label: getLabelFromTransitionChars(chars)
-            };
-
-            // if there is a reverse transition, then add a curve to this edge
-            // to avoid draw conflict
-            if (this.graphEdges.find(x => x.from === toId && x.to === fromId)) {
-                newEdge.smooth = {
-                    type: "curvedCW"
-                };
-            }
-
-            this.graphEdges.push(newEdge);
-
+            this.graphEdges.push(this.createGraphEdge(fromId, toId, chars));
             this.nextEdgeId++;
         }
 
-        this.reactivityCounter++;
+        this.increaseReactivityCounter();
     }
 
-    // requirements: id(Number) has to be valid;
-    // newName(String) cannot be empty; newX(Number); newY(Number)
-    // if either of the new properties above is null or undefined, it will not be updated.
+    createGraphEdge(fromId, toId, chars) {
+        const newEdge = {
+            id: this.nextEdgeId.toString(),
+            from: fromId,
+            to: toId,
+            label: getLabelFromTransitionChars(chars)
+        };
+
+        if (this.graphEdges.find(edge => edge.from === toId && edge.to === fromId)) {
+            newEdge.smooth = {
+                type: "curvedCW"
+            };
+        }
+
+        return newEdge;
+    }
+
     editState(id, newName, newType, newX, newY) {
-        const targetState = this.states.find(x => x.id === id);
-        const targetGraphNode = this.graphNodes.find(x => x.id === id);
-        
-        if (newName!=null) {
+        const targetState = this.findStateById(id);
+        const targetGraphNode = this.findGraphNodeById(id);
+
+        if (newName != null) {
             targetState.name = newName;
             targetGraphNode.label = newName;
         }
-        
+
         if (newType != null) {
             targetState.type = newType;
             targetGraphNode.group = toGraphNodeGroup(newType);
         }
-        
+
         if (newX != null) {
             targetGraphNode.x = newX;
         }
@@ -361,87 +337,64 @@ export class DfaInstance{
             targetGraphNode.y = newY;
         }
 
-        this.reactivityCounter++;
+        this.increaseReactivityCounter();
     }
 
-    // we did not supply an id when adding edges,
-    // so we will get the id that vis.js internally provided in click event.
-    // requirements: id(String) has to be valid; 
-    // newCharSeq(String) length>0;
-    // each char in charSeq must be unique in all transitions starting from the start state.
     editTransition(id, newCharSeq) {
-        const newCharsOrig = newCharSeq.split("");
-        const newChars = [];
+        const selectedGraphEdge = this.findGraphEdgeById(id);
+        const newChars = getUniqueChars(newCharSeq);
 
-        // remove duplications
-        for (const i of newCharsOrig) {
-            if (!newChars.includes(i)) {
-                newChars.push(i);
-            }
-        }
-
-        const selectedGraphEdge = this.graphEdges.find(x => x.id === id);
-
-        selectedGraphEdge.label = getLabelFromTransitionChars(newChars);
-
-        this.states.find(x => x.id === selectedGraphEdge.from)
-            .transitions.find(x => x.toId === selectedGraphEdge.to)
-            .chars = newChars;
-        
-        this.reactivityCounter++;
+        this.updateGraphEdgeLabel(selectedGraphEdge, newChars);
+        this.findTransitionByEdge(selectedGraphEdge).chars = newChars;
+        this.increaseReactivityCounter();
     }
 
-    // requirements: id(Number) has to be valid
     removeState(id) {
-        for (let i = this.states.length - 1; i >= 0; i--){
-            // remove the state in states
+        for (let i = this.states.length - 1; i >= 0; i--) {
             if (this.states[i].id === id) {
                 this.states.splice(i, 1);
+                continue;
             }
-            // remove related transitions from other states
-            else {
-                for (let j = this.states[i].transitions.length - 1; j >= 0; j--){
-                    if (this.states[i].transitions[j].toId === id) {
-                        this.states[i].transitions.splice(j, 1);
-                    }
-                }
-            }
+
+            this.removeTransitionsToState(this.states[i], id);
         }
 
-        // remove the state in graphNodes
-        this.graphNodes.splice(this.graphNodes.findIndex(x => x.id === id), 1);
+        this.graphNodes.splice(this.graphNodes.findIndex(node => node.id === id), 1);
 
-        // remove all edges from or to the state to be removed in graphEdges
-        for (let i = this.graphEdges.length - 1; i >= 0; i--){
+        for (let i = this.graphEdges.length - 1; i >= 0; i--) {
             if (this.graphEdges[i].from === id || this.graphEdges[i].to === id) {
                 this.graphEdges.splice(i, 1);
             }
         }
 
-        this.reactivityCounter++;
+        this.increaseReactivityCounter();
     }
 
-    // requirements: id(String) has to be valid
+    removeTransitionsToState(state, targetStateId) {
+        for (let i = state.transitions.length - 1; i >= 0; i--) {
+            if (state.transitions[i].toId === targetStateId) {
+                state.transitions.splice(i, 1);
+            }
+        }
+    }
+
     removeTransition(id) {
-        // remove the edge in graphEdges
-        const edgeToBeRemoved =
-            this.graphEdges.splice(this.graphEdges.findIndex(x => x.id === id), 1)[0];
-            
-        // remove reverse edge smooth curve if any
+        const edgeIndex = this.graphEdges.findIndex(edge => edge.id === id);
+        const edgeToBeRemoved = this.graphEdges.splice(edgeIndex, 1)[0];
         const reverseEdge = this.graphEdges.find(
-            x => x.from === edgeToBeRemoved.to && x.to === edgeToBeRemoved.from);
-        
+            edge => edge.from === edgeToBeRemoved.to && edge.to === edgeToBeRemoved.from
+        );
+
         if (reverseEdge) {
             delete reverseEdge.smooth;
         }
-        
-        // remove the transition in State.transitions
-        const transitionFromState = this.states.find(x => x.id === edgeToBeRemoved.from);
 
-        transitionFromState.transitions.splice(
-            transitionFromState.transitions.findIndex(
-                x => x.toId === edgeToBeRemoved.to), 1);
-        
-        this.reactivityCounter++;
+        const transitionFromState = this.findStateById(edgeToBeRemoved.from);
+        const transitionIndex = transitionFromState.transitions.findIndex(
+            transition => transition.toId === edgeToBeRemoved.to
+        );
+
+        transitionFromState.transitions.splice(transitionIndex, 1);
+        this.increaseReactivityCounter();
     }
 }
