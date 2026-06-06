@@ -106,27 +106,43 @@ export default observer(props => {
 
                 <span className={classnames(
                     styles.spanLowerRightPartWrapper,
-                    "d-flex flex-column justify-content-center align-items-center")}>
+                    styles.spanNfaRunHistoryWrapper,
+                    "d-flex flex-column")}>
                     <span className={styles.spanCurrentStateLabel}>
-                        {props.nfaInstance.runStateSetSequence.length - 1}步
+                        状态集历史
                     </span>
 
-                    <span className={styles.spanCurrentStateLabel}>
-                        {props.nfaInstance.isCurrentRunAccepting ? "可接受" : "当前状态集"}
-                    </span>
-
-                    <span className={classnames(
-                        styles.spanCurrentStateSetWrapper,
-                        "d-flex justify-content-center align-items-center")}>
-                        {props.nfaInstance.currentRunStates.map(state => (
-                            <span key={state.id}
+                    <div className={styles.divNfaRunHistoryList}>
+                        {props.nfaInstance.runStateSetSequence.map((stateSet, stepIndex) => (
+                            <div key={stepIndex}
                                 className={classnames(
-                                    styles.spanCurrentState,
-                                    styles.spanCurrentStateSetItem)}
-                                style={getStateStyle(state)}>
-                                {state.name}
-                            </span>
+                                    styles.divNfaRunHistoryItem,
+                                    stepIndex === props.nfaInstance.runStateSetSequence.length - 1
+                                        ? styles.divNfaRunHistoryItemActive
+                                        : "")}>
+                                <span className={styles.spanNfaRunHistoryStep}>
+                                    {stepIndex}步
+                                </span>
+
+                                <span className={classnames(
+                                    styles.spanCurrentStateSetWrapper,
+                                    "d-flex align-items-center")}>
+                                    {stateSet.map(state => (
+                                        <span key={state.id}
+                                            className={classnames(
+                                                styles.spanCurrentState,
+                                                styles.spanCurrentStateSetItem)}
+                                            style={getStateStyle(state)}>
+                                            {state.name}
+                                        </span>
+                                    ))}
+                                </span>
+                            </div>
                         ))}
+                    </div>
+
+                    <span className={styles.spanCurrentStateLabel}>
+                        {props.nfaInstance.isCurrentRunAccepting ? "可接受" : ""}
                     </span>
                 </span>
             </div>
