@@ -1,16 +1,27 @@
 {
     "compilerOptions": {
-        "baseUrl": ".",
         "paths": {
             "@/*": [
-                "/*"
+                "./*"
             ],
-            "components/*":["/components/*"],
-            "locales/*":["/locales/*"],
-            "modules/*":["/modules/*"],
-            "observables/*":["/observables/*"],
-            "pages/*":["/pages/*"],
-            "styles/*":["/styles/*"]
+            "components/*": [
+                "./components/*"
+            ],
+            "locales/*": [
+                "./locales/*"
+            ],
+            "modules/*": [
+                "./modules/*"
+            ],
+            "observables/*": [
+                "./observables/*"
+            ],
+            "pages/*": [
+                "./pages/*"
+            ],
+            "styles/*": [
+                "./styles/*"
+            ]
         }
     }
 }
