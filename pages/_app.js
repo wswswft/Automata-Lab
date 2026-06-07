@@ -36,6 +36,12 @@ const DIALOG_AFFAIRS = {
 };
 
 const MIRROR_URL = "https://ecui.gitee.io/automata-playground";
+const EXPORT_PICKER_ID = "automata-playground-export";
+const EXPORT_FILE_NAME_STORAGE_KEY = "automata-playground-export-file-name";
+
+const supportsFileSystemAccess = () =>
+  typeof window !== "undefined" &&
+  typeof window.showSaveFilePicker === "function";
 
 class MyApp extends react.Component {
   constructor(props) {
@@ -302,7 +308,32 @@ class MyApp extends react.Component {
     });
   };
 
-  onExportAutomataClick = () => {
+  downloadAutomataJson = (automataJsonString, suggestedName) => {
+    const stringUrl = URL.createObjectURL(
+      new Blob([automataJsonString], { type: "application/json" }),
+    );
+
+    const anchor = document.createElement("a");
+    anchor.href = stringUrl;
+    anchor.download = suggestedName;
+
+    anchor.click();
+
+    URL.revokeObjectURL(stringUrl);
+  };
+
+  writeAutomataJsonToHandle = async (fileHandle, automataJsonString) => {
+    const writable = await fileHandle.createWritable();
+    await writable.write(automataJsonString);
+    await writable.close();
+  };
+
+  getExportSuggestedName = () => {
+    return localStorage.getItem(EXPORT_FILE_NAME_STORAGE_KEY) ??
+      `${this.state.currentAutomataTypeName.toLowerCase()}.json`;
+  };
+
+  onExportAutomataClick = async () => {
     const currentAutomataPage = this.getAutomataPage();
 
     if (typeof currentAutomataPage?.exportAutomataJsonString !== "function") {
@@ -316,17 +347,38 @@ class MyApp extends react.Component {
       return;
     }
 
-    const stringUrl = URL.createObjectURL(
-      new Blob([automataJsonString], { type: "application/json" }),
-    );
+    const suggestedName = this.getExportSuggestedName();
+    const alertData = currentAutomataPage.pageAlertData ?? {
+      showAlertAnimated: message => window.alert(message),
+    };
 
-    const anchor = document.createElement("a");
-    anchor.href = stringUrl;
-    anchor.download = `${this.state.currentAutomataTypeName.toLowerCase()}.json`;
+    if (!supportsFileSystemAccess()) {
+      this.downloadAutomataJson(automataJsonString, suggestedName);
+      return;
+    }
 
-    anchor.click();
+    try {
+      const fileHandle = await window.showSaveFilePicker({
+        id: EXPORT_PICKER_ID,
+        suggestedName,
+        startIn: "downloads",
+        types: [
+          {
+            description: "Automata JSON",
+            accept: { "application/json": [".json"] },
+          },
+        ],
+      });
 
-    URL.revokeObjectURL(stringUrl);
+      await this.writeAutomataJsonToHandle(fileHandle, automataJsonString);
+      localStorage.setItem(EXPORT_FILE_NAME_STORAGE_KEY, fileHandle.name);
+      alertData.showAlertAnimated("保存成功");
+    } catch (e) {
+      if (e?.name !== "AbortError") {
+        alertData.showAlertAnimated("选择保存路径失败，已使用默认下载");
+        this.downloadAutomataJson(automataJsonString, suggestedName);
+      }
+    }
   };
 
   onClearAllClick = () => {
