@@ -1,8 +1,16 @@
-# Automata Playground
+# Automata-Lab
 
 [简体中文](README.zh-CN.md) | English
 
-Automata Playground is a [Next.js](https://nextjs.org/) based visual playground for building, editing, and running finite automata, nondeterministic finite automata, and Turing machines.
+Automata-Lab is a [Next.js](https://nextjs.org/) based visual playground for building, editing, and running finite automata, nondeterministic finite automata, and Turing machines.
+
+## Description
+
+Automata-Lab is a visual automata lab based on [Automata-Playground](https://github.com/ErnestThePoet/Automata-Playground), adding NFA support, DFA/NFA conversion, tuple definition panels, start-state entry arrows, and a smoother JSON export flow.
+
+## Acknowledgements
+
+Special thanks to [ErnestThePoet](https://github.com/ErnestThePoet) for creating the original [Automata-Playground](https://github.com/ErnestThePoet/Automata-Playground). This project is built on top of that work, and the original implementation provided the foundation for the interface, graph editing model, and automata visualization workflow.
 
 ## Features
 

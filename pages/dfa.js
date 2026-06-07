@@ -185,7 +185,7 @@ export default class DfaPage extends react.Component {
     pageComponent = observer(({ dfaInstance,appState,propertyEditorData,alertData }) => (
         <main className={styles.mainContentWrapper}>
             <Head>
-                <title>Automata Playground - DFA</title>
+                <title>Automata-Lab - DFA</title>
             </Head>
             
             <div className={appStyles.divAlert} role="alert" style={{

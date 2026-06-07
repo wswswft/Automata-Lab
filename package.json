@@ -1,6 +1,7 @@
 {
-  "name": "hit-automata-playground",
+  "name": "automata-lab",
   "version": "1.0.4",
+  "description": "A visual automata lab based on ErnestThePoet/Automata-Playground, with NFA support, DFA/NFA conversion, tuple panels, and improved JSON export.",
   "private": true,
   "scripts": {
     "dev": "next dev",

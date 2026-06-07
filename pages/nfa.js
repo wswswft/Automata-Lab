@@ -156,7 +156,7 @@ export default class NfaPage extends react.Component {
     pageComponent = observer(({ nfaInstance, appState, propertyEditorData, alertData }) => (
         <main className={styles.mainContentWrapper}>
             <Head>
-                <title>Automata Playground - NFA</title>
+                <title>Automata-Lab - NFA</title>
             </Head>
 
             <div className={appStyles.divAlert} role="alert" style={{

@@ -135,7 +135,7 @@ export default class TmPage extends react.Component {
     pageComponent = observer(({ tmInstance, appState, propertyEditorData, alertData }) => (
         <main className={styles.mainContentWrapper}>
             <Head>
-                <title>Automata Playground - TM</title>
+                <title>Automata-Lab - TM</title>
             </Head>
 
             <div className={appStyles.divAlert} role="alert" style={{

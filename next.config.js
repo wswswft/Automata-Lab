@@ -1,7 +1,7 @@
 const { PHASE_DEVELOPMENT_SERVER } = require("next/constants");
 const path = require("path");
 
-const DEPLOY_BASE_PATH = "/Automata-Playground";
+const DEPLOY_BASE_PATH = "/Automata-Lab";
 const SRC_ALIASES = [
   "components",
   "locales",

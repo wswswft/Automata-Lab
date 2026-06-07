@@ -35,9 +35,9 @@ const DIALOG_AFFAIRS = {
   CONFIRM_GOTO_MIRROR: 6,
 };
 
-const MIRROR_URL = "https://ecui.gitee.io/automata-playground";
-const EXPORT_PICKER_ID = "automata-playground-export";
-const EXPORT_FILE_NAME_STORAGE_KEY = "automata-playground-export-file-name";
+const MIRROR_URL = "https://ecui.gitee.io/automata-lab";
+const EXPORT_PICKER_ID = "automata-lab-export";
+const EXPORT_FILE_NAME_STORAGE_KEY = "automata-lab-export-file-name";
 
 const supportsFileSystemAccess = () =>
   typeof window !== "undefined" &&
@@ -412,7 +412,7 @@ class MyApp extends react.Component {
       yesNoDialogMessage: (
         <div>
           <div style={{ textAlign: "center", marginBottom: 7 }}>
-            HIT Automata Playground
+            Automata-Lab
           </div>
           Author:
           <br />
@@ -503,9 +503,9 @@ class MyApp extends react.Component {
           </span>
 
           {/* prefix is included because we don't want users to see 
-                    "HIT Automata Playground - " when loading.*/}
+                    "Automata-Lab - " when loading.*/}
           <span className={styles.spanTitle}>
-            HIT Automata Playground
+            Automata-Lab
             {this.state.currentAutomataTypeName === AUTOMATA_TYPE_NAMES.UNKNOWN
               ? ""
               : ` - ${this.state.currentAutomataTypeName}`}

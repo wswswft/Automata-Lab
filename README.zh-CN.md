@@ -1,8 +1,16 @@
-# 自动机实验平台
+# Automata-Lab
 
 简体中文 | [English](README.md)
 
-Automata Playground 是一个基于 [Next.js](https://nextjs.org/) 的自动机可视化实验平台，用于构建、编辑和运行有限自动机、非确定有限自动机与图灵机。
+Automata-Lab 是一个基于 [Next.js](https://nextjs.org/) 的自动机可视化实验平台，用于构建、编辑和运行有限自动机、非确定有限自动机与图灵机。
+
+## 项目说明
+
+Automata-Lab 是基于 [Automata-Playground](https://github.com/ErnestThePoet/Automata-Playground) 二次开发的自动机可视化实验平台，新增 NFA 支持、DFA/NFA 互转、五元组定义面板、开始状态入射箭头和更方便的 JSON 导出。
+
+## 致谢
+
+特别感谢 [ErnestThePoet](https://github.com/ErnestThePoet) 创作并开源原项目 [Automata-Playground](https://github.com/ErnestThePoet/Automata-Playground)。本项目建立在原项目的基础之上，原项目的界面设计、图编辑模型和自动机可视化流程为本项目提供了重要基础。
 
 ## 功能
 
