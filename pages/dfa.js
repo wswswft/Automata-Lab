@@ -94,7 +94,8 @@ export default class DfaPage extends react.Component {
             updateGraph(
                 this.pageDfaInstance.graphNodes,
                 this.pageDfaInstance.graphEdges,
-                this.pageDfaInstance.reactivityCounter);
+                this.pageDfaInstance.reactivityCounter,
+                true);
         });
 
         const convertedData = loadConvertedAutomataData();

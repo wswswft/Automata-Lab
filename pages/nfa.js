@@ -88,7 +88,8 @@ export default class NfaPage extends react.Component {
             updateGraph(
                 this.pageNfaInstance.graphNodes,
                 this.pageNfaInstance.graphEdges,
-                this.pageNfaInstance.reactivityCounter);
+                this.pageNfaInstance.reactivityCounter,
+                true);
         });
 
         const convertedData = loadConvertedAutomataData();

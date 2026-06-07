@@ -4,13 +4,24 @@ import { AUTOMATA_STATE_TYPES } from "modules/automata-state-types";
 import { getNodePosition } from "modules/graph-operations";
 import { adjustPropertyEditorPosition } from "modules/utilities";
 
+function getFirstAutomataNodeId(e, automataInstance) {
+    return e.nodes.find(nodeId => automataInstance.findGraphNodeById(nodeId));
+}
+
+function getFirstAutomataEdgeId(e, automataInstance) {
+    return e.edges.find(edgeId => automataInstance.findGraphEdgeById(edgeId));
+}
+
 export function handleGraphClick(
     e, pageAppState, pageDfaInstance, pagePropertyEditorData) {
+    const clickedNodeId = getFirstAutomataNodeId(e, pageDfaInstance);
+    const clickedEdgeId = getFirstAutomataEdgeId(e, pageDfaInstance);
+
     switch (pageAppState.currentState) {
         case APP_STATES.DEFAULT:
             // if click on node or edge, enter EDIT_STATE or EDIT_TRANSITION state
-            if (e.nodes.length > 0) {
-                pagePropertyEditorData.setSelectedGraphNodeId(e.nodes[0]);
+            if (clickedNodeId !== undefined) {
+                pagePropertyEditorData.setSelectedGraphNodeId(clickedNodeId);
 
                 pagePropertyEditorData.setEditorInputText(
                     pageDfaInstance.getStateNameById(
@@ -28,8 +39,8 @@ export function handleGraphClick(
                 
                 pageAppState.changeAppState(APP_STATES.EDIT_STATE);
             }
-            else if (e.edges.length > 0) {
-                pagePropertyEditorData.setSelectedGraphEdgeId(e.edges[0]);
+            else if (clickedEdgeId !== undefined) {
+                pagePropertyEditorData.setSelectedGraphEdgeId(clickedEdgeId);
 
                 const transitionCharSeq = pageDfaInstance.getTransitionCharSeqById(
                     pagePropertyEditorData.selectedGraphEdgeId);
@@ -95,17 +106,17 @@ export function handleGraphClick(
             break;
 
         case APP_STATES.ADD_TRANSITION_SELECT_ORIG:
-            if (e.nodes.length > 0) {
-                pagePropertyEditorData.setSelectedGraphNodeId(e.nodes[0]);
+            if (clickedNodeId !== undefined) {
+                pagePropertyEditorData.setSelectedGraphNodeId(clickedNodeId);
                 pageAppState.changeAppState(APP_STATES.ADD_TRANSITION_SELECT_DEST);
             }
             break;
             
         case APP_STATES.ADD_TRANSITION_SELECT_DEST:
-            if (e.nodes.length > 0) {
+            if (clickedNodeId !== undefined) {
                 // check validity
                 pageDfaInstance.addTransition(
-                    pagePropertyEditorData.selectedGraphNodeId, e.nodes[0], "0");
+                    pagePropertyEditorData.selectedGraphNodeId, clickedNodeId, "0");
                 
                 pagePropertyEditorData.setSelectedGraphEdgeId(
                     pageDfaInstance.getEdgeId(
@@ -144,18 +155,20 @@ export function handleGraphClick(
 
 export function handleGraphDragEnd(
     e, pageAppState, pageDfaInstance, pagePropertyEditorData) {
+    const draggedNodeId = getFirstAutomataNodeId(e, pageDfaInstance);
+
     // update node position storage
-    if (e.nodes.length > 0) {
-        const newCanvasPosition = getNodePosition(e.nodes[0]);
+    if (draggedNodeId !== undefined) {
+        const newCanvasPosition = getNodePosition(draggedNodeId);
         pageDfaInstance.editState(
-            e.nodes[0], undefined, undefined, newCanvasPosition.x, newCanvasPosition.y);
+            draggedNodeId, undefined, undefined, newCanvasPosition.x, newCanvasPosition.y);
     }
 
     // change node position in pageDfaInstance and change property editor position
     switch (pageAppState.currentState) {
         case APP_STATES.EDIT_STATE:
         case APP_STATES.EDIT_TRANSITION:
-            if (e.nodes.length > 0 || e.edges.length > 0) {
+            if (draggedNodeId !== undefined || getFirstAutomataEdgeId(e, pageDfaInstance) !== undefined) {
                 pagePropertyEditorData.setPropertyEditorPosition(e.event.center.y, e.event.center.x, false);
                 adjustPropertyEditorPosition(pageAppState, pagePropertyEditorData);
             }
