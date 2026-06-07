@@ -416,21 +416,27 @@ class MyApp extends react.Component {
           </div>
           Author:
           <br />
-          哈尔滨工业大学 120L021615 崔子健
+          哈尔滨工业大学 2024112234 王一博
           <br />
           <div style={{ marginTop: 7 }}>
             项目地址：
-            <a href="https://github.com/ErnestThePoet/Automata-Playground">
+            <a href="https://github.com/wswswft/Automata-Lab/">
               Github
             </a>
             <a
               style={{ marginLeft: 7 }}
-              href="https://gitee.com/ecui/automata-playground">
+              href="https://gitee.com/wswswft/Automata-Lab">
               Gitee
             </a>
           </div>
-          <div style={{ textAlign: "center", marginTop: 7 }}>
-            May 2022, Ernest Cui
+          <div style={{ marginTop: 7 }}>
+            致谢：基于崔子健学长
+            <br />
+            <a
+              href="https://github.com/ErnestThePoet/Automata-Playground">
+              Automata-Playground
+            </a>
+            二次开发
           </div>
         </div>
       ),
