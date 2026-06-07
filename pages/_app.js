@@ -32,10 +32,8 @@ const DIALOG_AFFAIRS = {
   CONFIRM_LOAD_EXAMPLE: 3,
   CONFIRM_LOAD_FILE: 4,
   CONFIRM_CLEAR_ALL: 5,
-  CONFIRM_GOTO_MIRROR: 6,
 };
 
-const MIRROR_URL = "https://ecui.gitee.io/automata-lab";
 const EXPORT_PICKER_ID = "automata-lab-export";
 const EXPORT_FILE_NAME_STORAGE_KEY = "automata-lab-export-file-name";
 
@@ -60,8 +58,6 @@ class MyApp extends react.Component {
       isYesNoDialogShow: false,
       yesNoDialogTitle: "",
       yesNoDialogMessage: "",
-
-      isMirrorDialogShow: false,
     };
 
     // UI-irrelavant data
@@ -78,15 +74,6 @@ class MyApp extends react.Component {
   componentDidMount = () => {
     // set automata type name on first render
     this.setAutomataTypeName();
-
-    // open mirror dialog on first visit
-    if (localStorage.getItem("visited") === null) {
-      this.setState({
-        isMirrorDialogShow: true,
-      });
-
-      localStorage.setItem("visited", "true");
-    }
   };
 
   automataPageRef = react.createRef();
@@ -157,10 +144,6 @@ class MyApp extends react.Component {
 
       case DIALOG_AFFAIRS.CONFIRM_LOAD_EXAMPLE:
         this.loadExample();
-        break;
-
-      case DIALOG_AFFAIRS.CONFIRM_GOTO_MIRROR:
-        window.location.assign(MIRROR_URL);
         break;
     }
 
@@ -390,20 +373,6 @@ class MyApp extends react.Component {
     });
   };
 
-  onGoToMirrorClick = () => {
-    if (this.isCurrentAutomataEmpty()) {
-      window.location.assign(MIRROR_URL);
-      return;
-    }
-
-    this.data.dialogAffair = DIALOG_AFFAIRS.CONFIRM_GOTO_MIRROR;
-    this.setState({
-      yesNoDialogTitle: "国内镜像",
-      yesNoDialogMessage: "当前自动机将会丢失。继续跳转吗？",
-      isYesNoDialogShow: true,
-    });
-  };
-
   onAboutClick = () => {
     this.hideAside();
     this.data.dialogAffair = DIALOG_AFFAIRS.NOTHING;
@@ -566,10 +535,6 @@ class MyApp extends react.Component {
               <i className="fa-solid fa-xmark"></i>
               清空
             </li>
-            <li onClick={this.onGoToMirrorClick}>
-              <i className="fa-solid fa-bolt"></i>
-              国内镜像
-            </li>
             <li onClick={this.onAboutClick}>
               <i className="fa-solid fa-circle-info"></i>
               关于
@@ -611,16 +576,6 @@ class MyApp extends react.Component {
                 </div>
               ))}
             </div>
-          </Dialog>
-        )}
-
-        {this.state.isMirrorDialogShow && (
-          <Dialog
-            title="国内镜像可用"
-            closeDialog={() => this.setState({ isMirrorDialogShow: false })}>
-            如果此站点访问较慢，可以改用国内的
-            <br />
-            <a href={MIRROR_URL}>Gitee Pages镜像</a>
           </Dialog>
         )}
 
