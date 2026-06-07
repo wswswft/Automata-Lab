@@ -77,6 +77,11 @@
     background-color: $example-tag-background-color-dfa;
 }
 
+.spanTypeTagNFA {
+    @extend .spanTypeTag;
+    background-color: $example-tag-background-color-nfa;
+}
+
 .spanTypeTagTM {
     @extend .spanTypeTag;
     background-color: $example-tag-background-color-tm;

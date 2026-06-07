@@ -45,6 +45,11 @@
         "type": "DFA"
     },
     {
+        "title": "接受首尾字符相同串的NFA",
+        "url": "/examples/nfa-same-first-last.json",
+        "type": "NFA"
+    },
+    {
         "title":"接受0n1n的图灵机",
         "url":"/examples/tm-0n1n.json",
         "type":"TM"
