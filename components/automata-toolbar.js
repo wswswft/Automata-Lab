@@ -51,6 +51,26 @@ const DfaToolbar = props => {
         }
     }
 
+    const onConvertAutomataClick = e => {
+        e.stopPropagation();
+
+        if (props.appState.currentState !== APP_STATES.ADD_STATE_SELECT_POSITION
+            && props.appState.currentState !== APP_STATES.ADD_TRANSITION_SELECT_ORIG
+            && props.appState.currentState !== APP_STATES.ADD_TRANSITION_SELECT_DEST) {
+            props.convertAutomata();
+        }
+    };
+
+    const onRestoreAutomataClick = e => {
+        e.stopPropagation();
+
+        if (props.appState.currentState !== APP_STATES.ADD_STATE_SELECT_POSITION
+            && props.appState.currentState !== APP_STATES.ADD_TRANSITION_SELECT_ORIG
+            && props.appState.currentState !== APP_STATES.ADD_TRANSITION_SELECT_DEST) {
+            props.restoreAutomata();
+        }
+    };
+
     return (
         <div className={classnames(props.className, styles.divToolbarWrapper)} style={props.style}>
             <div className="d-flex justify-content-center">
@@ -113,6 +133,34 @@ const DfaToolbar = props => {
                     <i className={classnames(styles.iButtonIcon, "fa-solid fa-play")}></i>
                     <span className={styles.spanButtonText}>运行</span>
                 </span>
+
+                {props.convertAutomata &&
+                    <span className={classnames(
+                        styles.spanButtonWrapper,
+                        "d-flex flex-column align-items-center",
+                        props.appState.currentState === APP_STATES.ADD_STATE_SELECT_POSITION
+                            || props.appState.currentState === APP_STATES.ADD_TRANSITION_SELECT_ORIG
+                            || props.appState.currentState === APP_STATES.ADD_TRANSITION_SELECT_DEST
+                            ? styles.spanButtonWrapperDisabled : "")}
+                        onClick={onConvertAutomataClick}>
+                        <i className={classnames(styles.iButtonIcon, "fa-solid fa-right-left")}></i>
+                        <span className={styles.spanButtonText}>{props.convertAutomataText}</span>
+                    </span>
+                }
+
+                {props.restoreAutomata &&
+                    <span className={classnames(
+                        styles.spanButtonWrapper,
+                        "d-flex flex-column align-items-center",
+                        props.appState.currentState === APP_STATES.ADD_STATE_SELECT_POSITION
+                            || props.appState.currentState === APP_STATES.ADD_TRANSITION_SELECT_ORIG
+                            || props.appState.currentState === APP_STATES.ADD_TRANSITION_SELECT_DEST
+                            ? styles.spanButtonWrapperDisabled : "")}
+                        onClick={onRestoreAutomataClick}>
+                        <i className={classnames(styles.iButtonIcon, "fa-solid fa-rotate-left")}></i>
+                        <span className={styles.spanButtonText}>{props.restoreAutomataText}</span>
+                    </span>
+                }
             </div>
         </div>
     )

@@ -4,23 +4,43 @@ import {
     toGraphNodeGroup
 } from "modules/automata-state-types";
 
+const EPSILON_TRANSITION_LABEL = "ε";
+const EPSILON_TRANSITION_CHAR = "";
+const EPSILON_TRANSITION_INPUT_ALIASES = ["@", "eps", "epsilon", EPSILON_TRANSITION_LABEL];
+
+function toDisplayChar(char) {
+    return char === EPSILON_TRANSITION_CHAR ? EPSILON_TRANSITION_LABEL : char;
+}
+
 function getLabelFromTransitionChars(chars) {
-    return chars.join(",");
+    return chars.length === 0
+        ? EPSILON_TRANSITION_LABEL
+        : chars.map(toDisplayChar).join(",");
 }
 
 function getUniqueChars(charSeq) {
     const uniqueChars = [];
+    const normalizedCharSeq = charSeq.trim();
+    const chars = normalizedCharSeq.length === 0
+        ? [EPSILON_TRANSITION_CHAR]
+        : (normalizedCharSeq.includes(",")
+            ? normalizedCharSeq.split(",").map(char => char.trim())
+            : normalizedCharSeq.split(""));
 
-    for (const char of charSeq) {
-        if (!uniqueChars.includes(char)) {
-            uniqueChars.push(char);
+    for (const char of chars) {
+        const normalizedChar = EPSILON_TRANSITION_INPUT_ALIASES.includes(char.toLowerCase())
+            ? EPSILON_TRANSITION_CHAR
+            : char;
+
+        if (normalizedChar !== "," && !uniqueChars.includes(normalizedChar)) {
+            uniqueChars.push(normalizedChar);
         }
     }
 
     return uniqueChars;
 }
 
-export class DfaInstance {
+export class NfaInstance {
     constructor() {
         makeAutoObservable(this, {
             findStateById: false,
@@ -33,33 +53,25 @@ export class DfaInstance {
             getStateTypeById: false,
             getEdgeId: false,
             getTransitionCharSeqById: false,
+            getEpsilonClosure: false,
             isStateNameUnique: false,
             isTransitionCharSeqUnique: false
         });
     }
 
-    ///////////////////////////////// Observable /////////////////////////////////
-    // Used to help subscribe array changes. It should be changed after other data updates.
     reactivityCounter = 0;
     nextStateId = 0;
     nextEdgeId = 0;
 
-    // State: { id, name, type, transitions: Array<{ toId, chars }> }
     states = [];
-
-    // GraphNode: { id, label, group, x, y }
     graphNodes = [];
-
-    // GraphEdge: { id, from, to, label, smooth? }
     graphEdges = [];
 
-    ///// Run automata data
     runString = "010";
     nextRunStringCharIndex = 0;
-    runStateSequence = [];
+    runStateSetSequence = [];
     isRunningStuck = false;
 
-    ///////////////////////////////// Lookup helpers /////////////////////////////////
     findStateById(id) {
         return this.states.find(state => state.id === id);
     }
@@ -85,28 +97,11 @@ export class DfaInstance {
         this.reactivityCounter++;
     }
 
-    ///////////////////////////////// ComputedFn /////////////////////////////////
     isStateNameUnique(name) {
         return this.states.find(state => state.name === name) === undefined;
     }
 
-    // return [isUnique, firstDuplicatedChar]
-    isTransitionCharSeqUnique(id, charSeq) {
-        const targetEdge = this.findGraphEdgeById(id);
-        const fromState = this.findStateById(targetEdge.from);
-
-        for (const transition of fromState.transitions) {
-            if (transition.toId === targetEdge.to) {
-                continue;
-            }
-
-            for (const char of charSeq) {
-                if (transition.chars.includes(char)) {
-                    return [false, char];
-                }
-            }
-        }
-
+    isTransitionCharSeqUnique() {
         return [true, ""];
     }
 
@@ -129,10 +124,45 @@ export class DfaInstance {
             return "";
         }
 
-        return this.findTransitionByEdge(targetEdge)?.chars.join("") ?? "";
+        const chars = this.findTransitionByEdge(targetEdge)?.chars ?? [];
+
+        return chars.length === 0
+            ? EPSILON_TRANSITION_LABEL
+            : chars.map(toDisplayChar).join(",");
     }
 
-    ///////////////////////////////// Computed /////////////////////////////////
+    getEpsilonClosure(states) {
+        const closure = [];
+        const stack = states.filter(state => state !== undefined);
+
+        while (stack.length > 0) {
+            const state = stack.pop();
+
+            if (closure.find(x => x.id === state.id)) {
+                continue;
+            }
+
+            closure.push(state);
+
+            for (const transition of state.transitions) {
+                if (
+                    transition.chars.length !== 0
+                    && !transition.chars.includes(EPSILON_TRANSITION_CHAR)
+                ) {
+                    continue;
+                }
+
+                const nextState = this.findStateById(transition.toId);
+
+                if (nextState && !closure.find(x => x.id === nextState.id)) {
+                    stack.push(nextState);
+                }
+            }
+        }
+
+        return closure.sort((a, b) => a.id - b.id);
+    }
+
     get minimumUnoccupiedStateId() {
         for (let i = 0; i <= this.nextStateId; i++) {
             if (this.findStateById(i) === undefined) {
@@ -145,18 +175,28 @@ export class DfaInstance {
         return this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START) !== undefined;
     }
 
-    get currentRunState() {
-        return this.runStateSequence[this.runStateSequence.length - 1] ?? { name: "" };
+    get currentRunStates() {
+        return this.runStateSetSequence[this.runStateSetSequence.length - 1] ?? [];
+    }
+
+    get isCurrentRunAccepting() {
+        return this.nextRunStringCharIndex === this.runString.length
+            && this.currentRunStates.some(state => state.type === AUTOMATA_STATE_TYPES.FINAL);
     }
 
     get isAutomataEmpty() {
         return this.states.length === 0;
     }
 
-    ///////////////////////////////// Run automata actions /////////////////////////////////
     setGraphNodeGroup(state, isCurrent) {
         const targetGraphNode = this.findGraphNodeById(state.id);
         targetGraphNode.group = toGraphNodeGroup(state.type, isCurrent);
+    }
+
+    setCurrentGraphNodeGroups(states, isCurrent) {
+        for (const state of states) {
+            this.setGraphNodeGroup(state, isCurrent);
+        }
     }
 
     setRunString(runString) {
@@ -165,15 +205,17 @@ export class DfaInstance {
 
     initRun() {
         this.nextRunStringCharIndex = 0;
-        this.runStateSequence = [
-            this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START)
+        this.runStateSetSequence = [
+            this.getEpsilonClosure([
+                this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START)
+            ])
         ];
-        this.setGraphNodeGroup(this.currentRunState, true);
+        this.setCurrentGraphNodeGroups(this.currentRunStates, true);
         this.isRunningStuck = false;
     }
 
     runExit() {
-        this.setGraphNodeGroup(this.currentRunState, false);
+        this.setCurrentGraphNodeGroups(this.currentRunStates, false);
     }
 
     runSingleStep() {
@@ -182,19 +224,31 @@ export class DfaInstance {
         }
 
         const currentChar = this.runString[this.nextRunStringCharIndex];
-        const nextTransition = this.currentRunState.transitions.find(
-            transition => transition.chars.includes(currentChar)
-        );
+        const nextStates = [];
 
-        if (!nextTransition) {
+        for (const state of this.currentRunStates) {
+            for (const transition of state.transitions) {
+                if (transition.chars.includes(currentChar)) {
+                    const nextState = this.findStateById(transition.toId);
+
+                    if (nextState && !nextStates.find(x => x.id === nextState.id)) {
+                        nextStates.push(nextState);
+                    }
+                }
+            }
+        }
+
+        const nextClosure = this.getEpsilonClosure(nextStates);
+
+        if (nextClosure.length === 0) {
             this.isRunningStuck = true;
             return;
         }
 
-        this.setGraphNodeGroup(this.currentRunState, false);
-        this.runStateSequence.push(this.findStateById(nextTransition.toId));
-        this.setGraphNodeGroup(this.currentRunState, true);
+        this.setCurrentGraphNodeGroups(this.currentRunStates, false);
+        this.runStateSetSequence.push(nextClosure);
         this.nextRunStringCharIndex++;
+        this.setCurrentGraphNodeGroups(this.currentRunStates, true);
         this.isRunningStuck = false;
     }
 
@@ -213,30 +267,40 @@ export class DfaInstance {
             return;
         }
 
-        this.setGraphNodeGroup(this.currentRunState, false);
-        this.runStateSequence.pop();
-        this.setGraphNodeGroup(this.currentRunState, true);
+        this.setCurrentGraphNodeGroups(this.currentRunStates, false);
+        this.runStateSetSequence.pop();
+        this.setCurrentGraphNodeGroups(this.currentRunStates, true);
         this.isRunningStuck = false;
         this.nextRunStringCharIndex--;
     }
 
     runReset() {
-        this.setGraphNodeGroup(this.currentRunState, false);
+        this.setCurrentGraphNodeGroups(this.currentRunStates, false);
         this.nextRunStringCharIndex = 0;
-        this.runStateSequence = [
-            this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START)
+        this.runStateSetSequence = [
+            this.getEpsilonClosure([
+                this.states.find(state => state.type === AUTOMATA_STATE_TYPES.START)
+            ])
         ];
-        this.setGraphNodeGroup(this.currentRunState, true);
+        this.setCurrentGraphNodeGroups(this.currentRunStates, true);
         this.isRunningStuck = false;
     }
 
-    ///////////////////////////////// Load and reset actions /////////////////////////////////
     loadData(nextStateId, nextEdgeId, states, graphNodes, graphEdges) {
         this.nextStateId = nextStateId;
         this.nextEdgeId = nextEdgeId;
         this.states = states;
         this.graphNodes = graphNodes;
         this.graphEdges = graphEdges;
+
+        for (const edge of this.graphEdges) {
+            const transition = this.findTransitionByEdge(edge);
+
+            if (transition) {
+                this.updateGraphEdgeLabel(edge, transition.chars);
+            }
+        }
+
         this.reactivityCounter = 0;
     }
 
@@ -249,7 +313,6 @@ export class DfaInstance {
         this.reactivityCounter = 0;
     }
 
-    ///////////////////////////////// State and transition actions /////////////////////////////////
     addState(name, stateType, x, y) {
         const stateId = this.nextStateId;
 

@@ -39,7 +39,7 @@ export default observer(props => {
                 break;
             
             case APP_STATES.EDIT_TRANSITION:
-                if (e.target.value.length === 0) {
+                if (e.target.value.length === 0 && !props.allowEmptyTransitionChars) {
                     props.propertyEditorData.showInvalidInputWarning("消耗的字符列表不能为空");
                     return;
                 }
@@ -151,7 +151,9 @@ export default observer(props => {
                         ? "block"
                         : "none"
                 }}>
-                多个消耗字符请连续输入, 如01
+                {props.allowEmptyTransitionChars
+                    ? "留空、@或eps表示空转移, 可写01@或0,1,eps"
+                    : "多个消耗字符请连续输入, 如01"}
             </label>
             
             <input

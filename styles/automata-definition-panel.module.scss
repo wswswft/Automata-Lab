@@ -1,0 +1,111 @@
+@import "layout-config";
+
+.divDefinitionPanel {
+    position: fixed;
+    z-index: $z-index-toolbar - 1;
+    top: calc(#{$navbar-height} + 18px);
+    right: 18px;
+    width: min(320px, calc(100vw - 36px));
+    max-height: calc(100vh - #{$navbar-height} - 112px);
+    padding: 14px 16px;
+    overflow: auto;
+    color: rgb(35, 35, 35);
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+    font-family: "Libre Baskerville", serif;
+}
+
+.divTitleRow {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    cursor: move;
+    touch-action: none;
+    user-select: none;
+}
+
+.spanType {
+    font-family: Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.spanTuple {
+    font-size: 14px;
+    font-style: italic;
+    white-space: nowrap;
+}
+
+.dlDefinitionList {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+
+    > div {
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 8px;
+        align-items: start;
+    }
+
+    dt {
+        font-style: italic;
+        font-weight: 700;
+    }
+
+    dd {
+        min-width: 0;
+        margin: 0;
+        overflow-wrap: anywhere;
+        line-height: 1.45;
+    }
+}
+
+.divTransitionTableWrapper {
+    margin-top: 14px;
+    overflow-x: auto;
+    font-family: Arial, sans-serif;
+}
+
+.tableTransitionTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th,
+    td {
+        padding: 7px 8px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        text-align: left;
+        vertical-align: top;
+    }
+
+    th {
+        color: rgb(90, 90, 90);
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    td {
+        overflow-wrap: anywhere;
+    }
+}
+
+.tdEmpty {
+    color: rgb(120, 120, 120);
+    text-align: center !important;
+}
+
+@media (max-width: 760px) {
+    .divDefinitionPanel {
+        top: calc(#{$navbar-height} + 10px);
+        right: 10px;
+        width: min(280px, calc(100vw - 20px));
+        max-height: 38vh;
+        padding: 12px;
+    }
+}

@@ -1,62 +1,70 @@
 import react from "react";
 import Head from "next/head";
+import Router from "next/router";
 
 import { observer } from "mobx-react-lite";
 import { autorun } from "mobx";
 import { AppState, APP_STATES } from "observables/app-state";
-import { TmInstance } from "observables/tm-instance";
+import { NfaInstance } from "observables/nfa-instance";
 import { PropertyEditorData } from "observables/property-editor-data";
 import { AlertData } from "observables/alert-data";
 import { adjustPropertyEditorPosition } from "modules/utilities";
 import {
     loadAutomataData,
-    generateTmJsonString
+    generateNfaJsonString
 } from "modules/automata-json";
 
-import TmPropertyEditor from "components/tm/tm-property-editor";
+import DfaPropertyEditor from "components/dfa/dfa-property-editor";
 import AutomataToolbar from "components/automata-toolbar";
-import TmRunPanel from "components/tm/tm-run-panel";
+import NfaRunPanel from "components/nfa/nfa-run-panel";
+import AutomataDefinitionPanel from "components/automata-definition-panel";
 
-import { handleGraphClick, handleGraphDragEnd } from "modules/tm/tm-page-operations";
+import { handleGraphClick, handleGraphDragEnd } from "modules/dfa/dfa-page-operations";
 import { initGraph, updateGraph } from "modules/graph-operations";
+import {
+    convertNfaToDfaData,
+    loadConvertedAutomataData,
+    storeConvertedAutomataData,
+    storeRestorableNfaData
+} from "modules/automata-conversion";
+import { PAGE_PATHS } from "modules/router-paths";
 
 import { isAppleBrowser } from "modules/utilities";
 
 import styles from "styles/dfa-tm.module.scss";
 import appStyles from "styles/app.module.scss";
 
-export default class TmPage extends react.Component {
+export default class NfaPage extends react.Component {
     constructor(props) {
         super(props);
     }
 
     isAutomataEmpty = () => {
-        return this.pageTmInstance.isAutomataEmpty;
+        return this.pageNfaInstance.isAutomataEmpty;
     };
 
-    loadAutomataJsonString = tmData => {
-        loadAutomataData(tmData, this.pageTmInstance);
+    loadAutomataJsonString = nfaData => {
+        loadAutomataData(nfaData, this.pageNfaInstance);
     };
 
     exportAutomataJsonString = () => {
-        if (this.pageTmInstance.isAutomataEmpty) {
-            this.pageAlertData.showAlertAnimated("图灵机为空");
+        if (this.pageNfaInstance.isAutomataEmpty) {
+            this.pageAlertData.showAlertAnimated("NFA为空");
             return null;
         }
         else {
-            // make sure all nodes are not in XXX_CURRENT group
             if (this.pageAppState.currentState === APP_STATES.RUN_AUTOMATA) {
-                this.pageTmInstance.runExit();
+                this.pageNfaInstance.runExit();
                 this.pageAppState.changeAppState(APP_STATES.DEFAULT);
             }
 
-            return generateTmJsonString(this.pageTmInstance);
+            return generateNfaJsonString(this.pageNfaInstance);
         }
     };
 
     clearAll = () => {
         this.pageAppState.changeAppState(APP_STATES.DEFAULT);
-        this.pageTmInstance.clearAll();
+        this.pageNfaInstance.clearAll();
     }
 
     componentDidMount = () => {
@@ -65,39 +73,40 @@ export default class TmPage extends react.Component {
                 handleGraphClick(
                     e,
                     this.pageAppState,
-                    this.pageTmInstance,
+                    this.pageNfaInstance,
                     this.pagePropertyEditorData);
             },
             e => {
                 handleGraphDragEnd(
                     e,
                     this.pageAppState,
-                    this.pageTmInstance,
+                    this.pageNfaInstance,
                     this.pagePropertyEditorData);
             });
 
-        // auto update graph when tm changes
         autorun(() => {
             updateGraph(
-                this.pageTmInstance.graphNodes,
-                this.pageTmInstance.graphEdges,
-                this.pageTmInstance.reactivityCounter);
+                this.pageNfaInstance.graphNodes,
+                this.pageNfaInstance.graphEdges,
+                this.pageNfaInstance.reactivityCounter,
+                true);
         });
+
+        const convertedData = loadConvertedAutomataData();
+
+        if (convertedData) {
+            loadAutomataData(convertedData, this.pageNfaInstance);
+        }
     }
 
     componentDidUpdate = () => {
-        // properly adjust property editor position based on its size and screen size.
-        // we try to place it center beneath the click point. if this exceeds window boundary,
-        // then we make it inside.
-        // must be done here instead of when click event happened because propertyEditorWrapper may not
-        // be present then.
         adjustPropertyEditorPosition(this.pageAppState, this.pagePropertyEditorData);
     }
 
     removeSelected = () => {
         switch (this.pageAppState.currentState) {
             case APP_STATES.EDIT_STATE:
-                this.pageTmInstance.removeState(
+                this.pageNfaInstance.removeState(
                     this.pagePropertyEditorData.selectedGraphNodeId
                 );
 
@@ -106,7 +115,7 @@ export default class TmPage extends react.Component {
                 break;
 
             case APP_STATES.EDIT_TRANSITION:
-                this.pageTmInstance.removeTransition(
+                this.pageNfaInstance.removeTransition(
                     this.pagePropertyEditorData.selectedGraphEdgeId
                 );
 
@@ -117,25 +126,37 @@ export default class TmPage extends react.Component {
     };
 
     runAutomata = () => {
-        if (!this.pageTmInstance.hasStartState) {
-            this.pageAlertData.showAlertAnimated("图灵机没有开始状态");
+        if (!this.pageNfaInstance.hasStartState) {
+            this.pageAlertData.showAlertAnimated("NFA没有开始状态");
 
             return;
         }
 
         this.pageAppState.changeAppState(APP_STATES.RUN_AUTOMATA);
-        this.pageTmInstance.initRun();
+        this.pageNfaInstance.initRun();
     };
 
-    pageTmInstance = new TmInstance();
+    convertAutomata = () => {
+        if (this.pageNfaInstance.isAutomataEmpty) {
+            this.pageAlertData.showAlertAnimated("NFA为空");
+            return;
+        }
+
+        const convertedData = convertNfaToDfaData(this.pageNfaInstance);
+        storeRestorableNfaData(this.pageNfaInstance);
+        storeConvertedAutomataData(convertedData);
+        Router.push(PAGE_PATHS.DFA_PAGE);
+    };
+
+    pageNfaInstance = new NfaInstance();
     pageAppState = new AppState();
     pagePropertyEditorData = new PropertyEditorData();
     pageAlertData = new AlertData();
 
-    pageComponent = observer(({ tmInstance, appState, propertyEditorData, alertData }) => (
+    pageComponent = observer(({ nfaInstance, appState, propertyEditorData, alertData }) => (
         <main className={styles.mainContentWrapper}>
             <Head>
-                <title>Automata-Lab - TM</title>
+                <title>Automata-Lab - NFA</title>
             </Head>
 
             <div className={appStyles.divAlert} role="alert" style={{
@@ -149,10 +170,11 @@ export default class TmPage extends react.Component {
                 (appState.currentState === APP_STATES.EDIT_STATE
                     || appState.currentState === APP_STATES.EDIT_TRANSITION)
                 &&
-                <TmPropertyEditor
+                <DfaPropertyEditor
                     appState={appState}
-                    tmInstance={tmInstance}
+                    dfaInstance={nfaInstance}
                     propertyEditorData={propertyEditorData}
+                    allowEmptyTransitionChars
                     className={styles.dfaPropertyEditor}
                     style={{
                         top: propertyEditorData.isPropertyEditorPositionAdjusted
@@ -165,27 +187,25 @@ export default class TmPage extends react.Component {
                             : 0
                     }} />
             }
-            {/* on mobile browsers, if we place property editor out of window boundary,
-                then the window will be scaled to fit it in. So before we adjust its position,
-                we place it on left-top to make proper adjustment.*/}
-            
-            {/* on apple browsers, after PropertyEditor is rendered, componentDidUpdate
-                won't be triggered, and so PropertyEditor will always stay at left:0, top:0.
-                Current solution is to ignore position adjustment and use unadjusted position
-                directly on apple browsers.*/}
+
+            <AutomataDefinitionPanel
+                automataInstance={nfaInstance}
+                automataType="NFA" />
 
             <AutomataToolbar
                 appState={appState}
                 removeSelected={this.removeSelected}
                 runAutomata={this.runAutomata}
+                convertAutomata={this.convertAutomata}
+                convertAutomataText="转DFA"
                 className={styles.bottomToolbar}
                 style={{
                     display: appState.currentState === APP_STATES.RUN_AUTOMATA ? "none" : "block"
                 }} />
 
-            <TmRunPanel
+            <NfaRunPanel
                 appState={appState}
-                tmInstance={tmInstance}
+                nfaInstance={nfaInstance}
                 alertData={alertData}
                 className={styles.bottomToolbar}
                 style={{
@@ -198,7 +218,7 @@ export default class TmPage extends react.Component {
 
     render = () => (
         <this.pageComponent
-            tmInstance={this.pageTmInstance}
+            nfaInstance={this.pageNfaInstance}
             appState={this.pageAppState}
             propertyEditorData={this.pagePropertyEditorData}
             alertData={this.pageAlertData} />

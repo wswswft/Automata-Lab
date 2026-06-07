@@ -1,12 +1,40 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true,
-  // For local testing we have to add /Automata-Playground after localhost:3000
-  // We still need to manually add /Automata-Playground for favicon in index.html after build,
-  // or add it to _document.js before build.
-  // Also, don't forget to copy .nojekyll to export folder after build.
-  basePath: "/Automata-Playground",
-  assetPrefix: "/Automata-Playground"
-}
+const { PHASE_DEVELOPMENT_SERVER } = require("next/constants");
+const path = require("path");
 
-module.exports = nextConfig
+const DEPLOY_BASE_PATH = "/Automata-Lab";
+const SRC_ALIASES = [
+  "components",
+  "locales",
+  "modules",
+  "observables",
+  "pages",
+  "styles",
+];
+
+module.exports = phase => {
+  const isDevelopment = phase === PHASE_DEVELOPMENT_SERVER;
+
+  /** @type {import('next').NextConfig} */
+  const nextConfig = {
+    reactStrictMode: true,
+    webpack: config => {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        "@": __dirname,
+        ...Object.fromEntries(
+          SRC_ALIASES.map(alias => [alias, path.join(__dirname, alias)])
+        ),
+      };
+
+      return config;
+    },
+    ...(isDevelopment
+      ? {}
+      : {
+          basePath: DEPLOY_BASE_PATH,
+          assetPrefix: DEPLOY_BASE_PATH,
+        }),
+  };
+
+  return nextConfig;
+};

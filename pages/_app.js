@@ -27,14 +27,21 @@ import "@fortawesome/fontawesome-free/css/solid.min.css";
 const DIALOG_AFFAIRS = {
   NOTHING: -1,
   CONFIRM_NEW_DFA: 0,
-  CONFIRM_NEW_TM: 1,
-  CONFIRM_LOAD_EXAMPLE: 2,
-  CONFIRM_LOAD_FILE: 3,
-  CONFIRM_CLEAR_ALL: 4,
-  CONFIRM_GOTO_MIRROR: 5,
+  CONFIRM_NEW_NFA: 1,
+  CONFIRM_NEW_TM: 2,
+  CONFIRM_LOAD_EXAMPLE: 3,
+  CONFIRM_LOAD_FILE: 4,
+  CONFIRM_CLEAR_ALL: 5,
+  CONFIRM_GOTO_MIRROR: 6,
 };
 
-const MIRROR_URL = "https://ecui.gitee.io/automata-playground";
+const MIRROR_URL = "https://ecui.gitee.io/automata-lab";
+const EXPORT_PICKER_ID = "automata-lab-export";
+const EXPORT_FILE_NAME_STORAGE_KEY = "automata-lab-export-file-name";
+
+const supportsFileSystemAccess = () =>
+  typeof window !== "undefined" &&
+  typeof window.showSaveFilePicker === "function";
 
 class MyApp extends react.Component {
   constructor(props) {
@@ -97,6 +104,18 @@ class MyApp extends react.Component {
     });
   };
 
+  getAutomataPage = () => {
+    const page = this.automataPageRef.current;
+
+    return page && typeof page.isAutomataEmpty === "function" ? page : null;
+  };
+
+  isCurrentAutomataEmpty = () => {
+    const page = this.getAutomataPage();
+
+    return page ? page.isAutomataEmpty() : true;
+  };
+
   closeDialog = yes => {
     if (!yes) {
       this.setState({
@@ -120,6 +139,10 @@ class MyApp extends react.Component {
         this.goToNewAutomataPage(PAGE_PATHS.DFA_PAGE);
         break;
 
+      case DIALOG_AFFAIRS.CONFIRM_NEW_NFA:
+        this.goToNewAutomataPage(PAGE_PATHS.NFA_PAGE);
+        break;
+
       case DIALOG_AFFAIRS.CONFIRM_NEW_TM:
         this.goToNewAutomataPage(PAGE_PATHS.TM_PAGE);
         break;
@@ -129,7 +152,7 @@ class MyApp extends react.Component {
         break;
 
       case DIALOG_AFFAIRS.CONFIRM_CLEAR_ALL:
-        this.automataPageRef.current.clearAll();
+        this.getAutomataPage()?.clearAll();
         break;
 
       case DIALOG_AFFAIRS.CONFIRM_LOAD_EXAMPLE:
@@ -150,7 +173,7 @@ class MyApp extends react.Component {
 
   goToNewAutomataPage = (path, callback = () => {}) => {
     if (Router.pathname === path) {
-      this.automataPageRef.current.clearAll();
+      this.getAutomataPage()?.clearAll();
       callback();
     } else {
       Router.push(path).then(() => {
@@ -162,9 +185,14 @@ class MyApp extends react.Component {
   };
 
   importAutomataJsonString = jsonString => {
+    const currentAutomataPage = this.getAutomataPage();
+    const alertData = currentAutomataPage?.pageAlertData ?? {
+      showAlertAnimated: message => window.alert(message),
+    };
+
     const automataData = parseAutomataJson(
       jsonString,
-      this.automataPageRef.current.pageAlertData,
+      alertData,
     );
 
     if (automataData) {
@@ -177,6 +205,12 @@ class MyApp extends react.Component {
           });
           break;
 
+        case AUTOMATA_TYPES.NFA:
+          this.goToNewAutomataPage(PAGE_PATHS.NFA_PAGE, () => {
+            this.automataPageRef.current.loadAutomataJsonString(automataData);
+          });
+          break;
+
         case AUTOMATA_TYPES.TM:
           this.goToNewAutomataPage(PAGE_PATHS.TM_PAGE, () => {
             this.automataPageRef.current.loadAutomataJsonString(automataData);
@@ -184,9 +218,7 @@ class MyApp extends react.Component {
           break;
 
         default:
-          this.automataPageRef.current.pageAlertData.showAlertAnimated(
-            "自动机类型不受支持",
-          );
+          alertData.showAlertAnimated("自动机类型不受支持");
           break;
       }
     }
@@ -208,7 +240,7 @@ class MyApp extends react.Component {
 
   ///////////////////////////////// Aside onclick handlers /////////////////////////////////
   onNewDfaClick = () => {
-    if (this.automataPageRef.current.isAutomataEmpty()) {
+    if (this.isCurrentAutomataEmpty()) {
       this.goToNewAutomataPage(PAGE_PATHS.DFA_PAGE);
       return;
     }
@@ -222,7 +254,7 @@ class MyApp extends react.Component {
   };
 
   onNewTmClick = () => {
-    if (this.automataPageRef.current.isAutomataEmpty()) {
+    if (this.isCurrentAutomataEmpty()) {
       this.goToNewAutomataPage(PAGE_PATHS.TM_PAGE);
       return;
     }
@@ -230,6 +262,20 @@ class MyApp extends react.Component {
     this.data.dialogAffair = DIALOG_AFFAIRS.CONFIRM_NEW_TM;
     this.setState({
       yesNoDialogTitle: "新建TM",
+      yesNoDialogMessage: "当前自动机将被清空。继续吗？",
+      isYesNoDialogShow: true,
+    });
+  };
+
+  onNewNfaClick = () => {
+    if (this.isCurrentAutomataEmpty()) {
+      this.goToNewAutomataPage(PAGE_PATHS.NFA_PAGE);
+      return;
+    }
+
+    this.data.dialogAffair = DIALOG_AFFAIRS.CONFIRM_NEW_NFA;
+    this.setState({
+      yesNoDialogTitle: "新建NFA",
       yesNoDialogMessage: "当前自动机将被清空。继续吗？",
       isYesNoDialogShow: true,
     });
@@ -249,7 +295,7 @@ class MyApp extends react.Component {
   };
 
   onImportAutomataClick = () => {
-    if (this.automataPageRef.current.isAutomataEmpty()) {
+    if (this.isCurrentAutomataEmpty()) {
       document.getElementById("in-import-automata").click();
       return;
     }
@@ -262,25 +308,77 @@ class MyApp extends react.Component {
     });
   };
 
-  onExportAutomataClick = () => {
-    const automataJsonString =
-      this.automataPageRef.current.exportAutomataJsonString();
-
-    if (!automataJsonString) {
-      return;
-    }
-
+  downloadAutomataJson = (automataJsonString, suggestedName) => {
     const stringUrl = URL.createObjectURL(
       new Blob([automataJsonString], { type: "application/json" }),
     );
 
     const anchor = document.createElement("a");
     anchor.href = stringUrl;
-    anchor.download = `${Router.pathname === "/dfa" ? "dfa" : "tm"}.json`;
+    anchor.download = suggestedName;
 
     anchor.click();
 
     URL.revokeObjectURL(stringUrl);
+  };
+
+  writeAutomataJsonToHandle = async (fileHandle, automataJsonString) => {
+    const writable = await fileHandle.createWritable();
+    await writable.write(automataJsonString);
+    await writable.close();
+  };
+
+  getExportSuggestedName = () => {
+    return localStorage.getItem(EXPORT_FILE_NAME_STORAGE_KEY) ??
+      `${this.state.currentAutomataTypeName.toLowerCase()}.json`;
+  };
+
+  onExportAutomataClick = async () => {
+    const currentAutomataPage = this.getAutomataPage();
+
+    if (typeof currentAutomataPage?.exportAutomataJsonString !== "function") {
+      return;
+    }
+
+    const automataJsonString =
+      currentAutomataPage.exportAutomataJsonString();
+
+    if (!automataJsonString) {
+      return;
+    }
+
+    const suggestedName = this.getExportSuggestedName();
+    const alertData = currentAutomataPage.pageAlertData ?? {
+      showAlertAnimated: message => window.alert(message),
+    };
+
+    if (!supportsFileSystemAccess()) {
+      this.downloadAutomataJson(automataJsonString, suggestedName);
+      return;
+    }
+
+    try {
+      const fileHandle = await window.showSaveFilePicker({
+        id: EXPORT_PICKER_ID,
+        suggestedName,
+        startIn: "downloads",
+        types: [
+          {
+            description: "Automata JSON",
+            accept: { "application/json": [".json"] },
+          },
+        ],
+      });
+
+      await this.writeAutomataJsonToHandle(fileHandle, automataJsonString);
+      localStorage.setItem(EXPORT_FILE_NAME_STORAGE_KEY, fileHandle.name);
+      alertData.showAlertAnimated("保存成功");
+    } catch (e) {
+      if (e?.name !== "AbortError") {
+        alertData.showAlertAnimated("选择保存路径失败，已使用默认下载");
+        this.downloadAutomataJson(automataJsonString, suggestedName);
+      }
+    }
   };
 
   onClearAllClick = () => {
@@ -293,7 +391,7 @@ class MyApp extends react.Component {
   };
 
   onGoToMirrorClick = () => {
-    if (this.automataPageRef.current.isAutomataEmpty()) {
+    if (this.isCurrentAutomataEmpty()) {
       window.location.assign(MIRROR_URL);
       return;
     }
@@ -314,7 +412,7 @@ class MyApp extends react.Component {
       yesNoDialogMessage: (
         <div>
           <div style={{ textAlign: "center", marginBottom: 7 }}>
-            HIT Automata Playground
+            Automata-Lab
           </div>
           Author:
           <br />
@@ -344,7 +442,7 @@ class MyApp extends react.Component {
   onExampleItemClick = url => {
     this.data.exampleJsonUrl = url;
 
-    if (this.automataPageRef.current.isAutomataEmpty()) {
+    if (this.isCurrentAutomataEmpty()) {
       this.loadExample();
       return;
     }
@@ -405,9 +503,9 @@ class MyApp extends react.Component {
           </span>
 
           {/* prefix is included because we don't want users to see 
-                    "HIT Automata Playground - " when loading.*/}
+                    "Automata-Lab - " when loading.*/}
           <span className={styles.spanTitle}>
-            HIT Automata Playground
+            Automata-Lab
             {this.state.currentAutomataTypeName === AUTOMATA_TYPE_NAMES.UNKNOWN
               ? ""
               : ` - ${this.state.currentAutomataTypeName}`}
@@ -426,6 +524,11 @@ class MyApp extends react.Component {
             <li onClick={this.onNewDfaClick}>
               <i className="fa-solid fa-plus"></i>
               新建DFA
+            </li>
+
+            <li onClick={this.onNewNfaClick}>
+              <i className="fa-solid fa-plus"></i>
+              新建NFA
             </li>
 
             <li onClick={this.onNewTmClick}>
